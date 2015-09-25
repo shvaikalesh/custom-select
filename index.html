@@ -5,15 +5,31 @@
     <title>Select Plugin</title>
     <script src="dom4.js"></script>
     <script src="my-query.js"></script>
+    <script src="my-query-event.js"></script>
 </head>
 <body>
     <select name="test" id="test" class="custom-select" style="vertical-align: top">
         <option value="1">Option 1</option>
         <option value="2">Option 2</option>
-        <option value="3">Option 3</option>
-        <option value="4">Option 4</option>
-        <option value="5">Option 5</option>
+        <option value="3" selected>Option 3</option>
+        <optgroup label="Optgroup">
+            <option value="5">Option 5</option>
+            <option value="4">Option 4</option>
+        </optgroup>
     </select>
+    <!-- <select name="test2" id="test2" class="custom-select" style="vertical-align: top">
+        <optgroup label="1">
+            <option value="1">Option 1</option>
+            <option value="2">Option 2</option>
+        </optgroup>
+        <option value="2.5">Option 2.5</option> 
+        <optgroup label="2">
+            <option value="3">Option 3</option>
+            <option value="4" selected>Option 4</option>
+            <option value="5">Option 5</option>
+            
+        </optgroup>
+    </select> -->
     <script src="selectPlugin.js"></script>
 </body>
 </html>
