@@ -6,6 +6,11 @@
     <script src="dom4.js"></script>
     <script src="my-query.js"></script>
     <script src="my-query-event.js"></script>
+
+    <style>
+        .hr-select-wrapper {position: relative;}
+        .hr-select-search {transform: rotateY(90deg);}
+    </style>
 </head>
 <body>
     <p>Usual select</p>
@@ -16,22 +21,22 @@
         <option value="4">Option 4</option>
         <option value="5">Option 5</option>
     </select>
-    <br>
+    <br><br><br><br><br><br>
     <p>With optgroup</p>
     <select name="test2" id="test2" style="vertical-align: top">
-        <optgroup label="Group A" id='aa'>
+        <optgroup label="Group A" id='group'>
             <option value="1">Option 1</option>
             <option value="2">Option 2</option>
         </optgroup>
         <option value="2.5">Option 2.5</option> 
         <optgroup label="Group B">
             <option value="3">Option 3</option>
-            <option value="4" selected>Option 4</option>
+            <option value="4">Option 4</option>
             <option value="5">Option 5</option>
             
         </optgroup>
     </select>
-    
+
     <script src="selectPlugin.js"></script>
 </body>
 </html>
