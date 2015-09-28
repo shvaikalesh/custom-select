@@ -8,23 +8,46 @@
     <script src="my-query-event.js"></script>
 
     <style>
-        .hr-select-wrapper {position: relative;}
-        .hr-select-search {transform: rotateY(90deg);}
+        .hr-select-wrapper {position: relative; display: inline-block;}
+        .hr-select-search, .hr-select-wrapper select {position: absolute; transform: rotateY(90deg);}
+        .hr-select-current {width: 200px; border: 1px solid black;}
+        .hr-select-list {display: none;}
+        .hr-select-list li:not(.hr-select-group):hover {background-color: red;}
+        .hr-select-list li[data-disabled], .hr-select-group[data-disabled] li {color: gray}
+        .hr-select-list li:not(.hr-select-group)[data-disabled]:hover, .hr-select-group[data-disabled] li:hover {background-color: white}
+
+        .hr-select-list {
+            list-style: none;
+            margin: 0;
+            padding: 0;
+            position: absolute;
+        }
+
+        .hr-select-label {
+            font-weight: 700;
+        }
+
+        .hr-select-group li {
+            padding-left: 10px;
+        }
+
     </style>
 </head>
 <body>
     <p>Usual select</p>
-    <select name="test" id="test" style="vertical-align: top">
-        <option value="1">Option 1</option>
-        <option value="2">Option 2</option>
-        <option value="3" selected>Option 3</option>
-        <option value="4">Option 4</option>
-        <option value="5">Option 5</option>
-    </select>
+    <div>
+        <select name="test" id="test" style="vertical-align: top">
+            <option value="1">Option 1</option>
+            <option value="2" disabled>Disabled</option>
+            <option value="3" selected>Option 3</option>
+            <option value="4">Option 4</option>
+            <option value="5">Option 5</option>
+        </select>
+    </div>
     <br><br><br><br><br><br>
     <p>With optgroup</p>
     <select name="test2" id="test2" style="vertical-align: top">
-        <optgroup label="Group A" id='group'>
+        <optgroup label="Group A" id='group' disabled>
             <option value="1">Option 1</option>
             <option value="2">Option 2</option>
         </optgroup>
