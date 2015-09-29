@@ -1,30 +1,50 @@
-!(function() {
+DocumentFragment.prototype.append = Element.prototype.append;
+
+!(function(global, options) 
+{
+    "use strict"
+    Object.assign(options,
+    {
+        COMPANY: 'hc',
+        CONTROL: 'select',
+        SEPARATOR: '-'
+    });
+
     // Helpers.
-    function createPrefixedElement(prefix) {
-        return function(el, className) {
-            var customEl = $('<' + el + '>');
-            customEl.classList.add(prefix + '-' + className);
-            return customEl;
-        }
-    }
-    var createHRselectBlock = createPrefixedElement('hr-select');
+    function create(tag, name) 
+    {
+        var element = $('<' + tag + '>')
+            element.className =
+            [
+                , options.COMPANY
+                , options.CONTROL
+                , name
+            ]
+            .filter(String)
+            .join(options.SEPARATOR)
 
-    DocumentFragment.prototype.append = Element.prototype.append;
-
-    function hide(element) {
-        element.style.setProperty('display', 'none');
-    }
-    function show(element) {
-        element.style.removeProperty('display');
+        return element;
     }
 
+    function hide($element) 
+    {
+        return $element.style.setProperty('display', 'none')
+            || $element
+    }
 
+    function show($element)
+    {
+        return $element.style.removeProperty('display')
+            || $element
+    }
+
+    var classes = {}
 
     // Init plugin.
-    var selectElements = $$('select:not([mutiple])');
-        selectElements.forEach(replaceSelectElement);
-    // Var to store current opened HRSelect.
-    var currentOpenedCustomSelect;
+    var selectElements = $$('select:not([mutiple])')
+        selectElements.forEach(replaceSelectElement)
+    // Var to store current opened HCSelect.
+    var currentOpenedCustomSelect
 
     // Replace <select> with custom structure.
     function replaceSelectElement(select) {
@@ -32,31 +52,32 @@
         /*
          *  CUSTOM SELECT.
          */
-        var HRSelect = createHRselectBlock('div', 'wrapper');
-        select.before(HRSelect);
-        select.tabIndex = -1;
+        var HCSelect = create('div', 'wrapper')
+        select.before(HCSelect)
+        select.tabIndex = -1
+        classes.wrapper = HCSelect.className
 
-        HRSelect.dataset.id = select.dataset.id; // debug
+        HCSelect.dataset.id = select.dataset.id; // debug
 
         // Blocks.
-        function addHRPrefixedBlock(parent) {
+        function addHCPrefixedBlock(parent) {
             return function(type, className) {
-                var block = createHRselectBlock(type, className);
+                var block = create(type, className);
                 parent.append(block);
                 return block;
             }
         }
-        var addBlockToHRSelect = addHRPrefixedBlock(HRSelect);
+        var addBlockToHCSelect = addHCPrefixedBlock(HCSelect);
 
-        var HRSelectBefore = addBlockToHRSelect('div', 'before');
+        var HCSelectBefore = addBlockToHCSelect('div', 'before');
 
-        var HRSelectCurrent = addBlockToHRSelect('div', 'current');
-            HRSelectCurrent.textContent = select.options[select.selectedIndex].textContent;
+        var HCSelectCurrent = addBlockToHCSelect('div', 'current');
+            HCSelectCurrent.textContent = select.options[select.selectedIndex].textContent;
 
-        var HRSelectAfter = addBlockToHRSelect('div', 'after');
+        var HCSelectAfter = addBlockToHCSelect('div', 'after');
 
-        var HRSelectList = addBlockToHRSelect('ul', 'list');
-            hide(HRSelectList);
+        var HCSelectList = addBlockToHCSelect('ul', 'list');
+            hide(HCSelectList);
 
         // Transfer select children.
         function transferChildren(parent) {
@@ -76,8 +97,8 @@
                         break;
 
                     case 'optgroup':
-                        newChild.classList.add('hr-select-group');
-                        var label = createHRselectBlock('div', 'label');
+                        newChild.classList.add('hc-select-group');
+                        var label = create('div', 'label');
                         label.textContent = child.label;
                         newChild.append(label);
                         newChild.append.apply(newChild, transferChildren(child));
@@ -87,7 +108,7 @@
             });
 
         }
-        HRSelectList.append.apply(HRSelectList, transferChildren(select));
+        HCSelectList.append.apply(HCSelectList, transferChildren(select));
 
         // Transfer select siblings.
         var selectSiblings = new DocumentFragment(); // TODO: POLYFILL
@@ -99,113 +120,136 @@
             else
                 break;
         }
-        HRSelect.append(select);
-        HRSelect.append(selectSiblings);
+        HCSelect.append(select);
+        HCSelect.append(selectSiblings);
 
         // Hidden input block.
-        var HRSelectSearch = addBlockToHRSelect('input', 'search');
-            HRSelectSearch.type = 'search';
+        var HCSelectSearch = addBlockToHCSelect('input', 'search');
+            HCSelectSearch.type = 'search';
 
 
 
 
 
         // Assign handlers.
-        // Open/close HRSelect.
+        // Open/close HCSelect.
         function toggleSelect(e) {
-            if (getComputedStyle(HRSelectList).display == 'none') {
+            if (getComputedStyle(HCSelectList).display == 'none') {
                 if (currentOpenedCustomSelect)
                     hide(currentOpenedCustomSelect);
-                show(HRSelectList);
-                currentOpenedCustomSelect = HRSelectList;
+                show(HCSelectList);
+                currentOpenedCustomSelect = HCSelectList;
             } else 
-                    show(HRSelectList);
+                    show(HCSelectList);
         }
-        $.on(HRSelectCurrent, 'click', toggleSelect);
+        $.on(HCSelectCurrent, 'click', toggleSelect);
 
-        // Detect HRSelectList events.
-        $.on(HRSelectList, 'click', (e) => {
-            if (e.target == HRSelectList || e.target.classList.contains('hr-select-label') || e.target.closest('li[data-disabled]'))
+        // Detect HCSelectList events.
+        $.on(HCSelectList, 'click', (e) => {
+            if (e.target == HCSelectList || e.target.classList.contains('hc-select-label') || e.target.closest('li[data-disabled]'))
                 return;
             else {
-                HRSelectCurrent.textContent = e.target.textContent;
+                HCSelectCurrent.textContent = e.target.textContent;
                 select.selectedIndex = customOptionsArray.indexOf(e.target);
-                hide(HRSelectList);
+                hide(HCSelectList);
             }
         });
 
-
-        // Handle select focus/blur.
-        $.on(HRSelectSearch, 'focus', function() {
-            HRSelectList.style.removeProperty('display');
-            HRSelectCurrent.classList.toggle('hr-select-focused');
+        // Focus on click.
+        $.on(HCSelectCurrent, 'click', function() {
+            HCSelectSearch.focus();
         });
-        $.on(HRSelectSearch, 'blur', function() {
-            hide(HRSelectList);
-            HRSelectCurrent.style.outline = '';
-            HRSelectCurrent.classList.toggle('hr-select-focused');
-            var selected = HRSelectList.query('.hr-select-highlighted');
+        // Handle select focus/blur.
+        $.on(HCSelectSearch, 'focus', function() {
+            HCSelectList.style.removeProperty('display');
+            HCSelectCurrent.classList.toggle('hc-select-focused');
+        });
+        $.on(HCSelectSearch, 'blur', function() {
+            hide(HCSelectList);
+            HCSelectCurrent.style.outline = '';
+            HCSelectCurrent.classList.toggle('hc-select-focused');
+            var selected = HCSelectList.query('.hc-select-highlighted');
             if (selected)
-                selected.classList.remove('hr-select-highlighted');
+                selected.classList.remove('hc-select-highlighted');
         });
 
         // Handle keyboard.
-        $.on(HRSelectSearch, 'keydown', function(e) {
+        $.on(HCSelectSearch, 'keydown', function(e) {
+            // Highlight next valid sibling.
+            function highlightNext(el) {
+                var highlighted = $('.hc-select-highlighted');
+                var next;
+
+                if (el.contains(highlighted)) {
+                    next = getNextValidLi(highlighted);
+                    if (next) {
+                        highlighted.classList.toggle('hc-select-highlighted');
+                        next.classList.toggle('hc-select-highlighted');
+                    }
+                    else return;
+                }
+                else {
+                    next = getNextValidLi(el);
+                    if (next)
+                        next.classList.toggle('hc-select-highlighted');
+                }
+            }
+            // Helper for highlightNext().
             function getNextValidLi(current) {
                 var next = current.firstElementChild ||
                            current.nextElementSibling ||
                            current.parentElement.nextElementSibling;
-                console.log(next);
-                if (next == HRSelectList) return;
-                if (next && next.dataset.hasOwnProperty('disabled') || 
+                if (next == select) return;
+
+                if (next && (next.dataset.hasOwnProperty('disabled') || 
                     next.parentElement.dataset.hasOwnProperty('disabled') ||
                     next.tagName != 'LI' || 
-                    next.classList.contains('hr-select-group')) {
+                    next.classList.contains('hc-select-group'))) 
+                {
                         next = getNextValidLi(next);
                 }
                 return next;
             }
 
-            // Highlight next/prev valid sibling.
-            function highlightNext(el) {
+            // Highlight prev valid sibling.
+            /*function highlightPrev(el) {
                 // TODO
-                var highlighted, next;
+                var highlighted = $('.hc-select-highlighted');
+                var prev;
 
-                if (el.contains($('.hr-select-highlighted'))) {
-                    highlighted = el.query('.hr-select-highlighted');
-                    if (highlighted == el.lastChild) return; 
-
-                    highlighted.classList.toggle('hr-select-highlighted');
-                    next = getNextValidLi(highlighted);
-                    next.classList.toggle('hr-select-highlighted');
+                if (el.contains(highlighted)) {
+                    prev = getPrevValidLi(highlighted);
+                    if (prev) {
+                        highlighted.classList.toggle('hc-select-highlighted');
+                        prev.classList.toggle('hc-select-highlighted');
+                    }
+                    else return;
                 }
                 else {
-                    highlighted = getNextValidLi(el);
-                    if (highlighted)
-                        highlighted.classList.toggle('hr-select-highlighted');
+                    prev = getNextValidLi(el);
+                    if (prev)
+                        prev.classList.toggle('hc-select-highlighted');
                 }
-            }
-            function highlightPrev(el) {
-                // TODO
-            }
+            }*/
 
             var openedSelect;
-            if (openedSelect = HRSelect.query('.hr-select-focused')) {
-
+            if (openedSelect = HCSelect.query('.hc-select-focused')) {
                 switch(e.which) {
+                    // case 38:
+                    //     highlightPrev(HCSelectList);
                     case 40:
-                        highlightNext(HRSelectList);
+                        highlightNext(HCSelectList);
                 }
             }
         });
     } // replaceSelectElement.
 
-    // Detect clicks outside of HRSelectList.
+    // Detect clicks outside of HCSelectList.
     $.on(document, 'click', (e) => {
-        var cS = e.target.closest('.hr-select-wrapper');
+        var cS = e.target.closest('.hc-select-wrapper');
         if (!cS && currentOpenedCustomSelect) {
             currentOpenedCustomSelect.style.display = 'none';
         }
     })
 
-})()
+})(this, {})

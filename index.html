@@ -9,28 +9,28 @@
     <script src="my-query-traversing.js"></script>
 
     <style>
-        .hr-select-wrapper {position: relative; display: inline-block;}
-        /*.hr-select-search{position: absolute; transform: rotateY(90deg);}*/
-        .hr-select-wrapper select {position: relative;left: 300px;}
-        .hr-select-current { border: 1px solid black;}
-        .hr-select-current.hr-select-focused {outline: 2px solid red;}
-        .hr-select-list {width: 100%;}
-        .hr-select-list li:not(.hr-select-group):hover, .hr-select-highlighted {background-color: red;}
-        .hr-select-list li[data-disabled], .hr-select-group[data-disabled] li {color: gray}
-        .hr-select-list li:not(.hr-select-group)[data-disabled]:hover, .hr-select-group[data-disabled] li:hover {background-color: white}
+        .hc-select-wrapper {position: relative; display: inline-block;}
+        /*.hc-select-search{position: absolute; transform: rotateY(90deg);}*/
+        .hc-select-wrapper select {position: relative;left: 300px;}
+        .hc-select-current { border: 1px solid black;}
+        .hc-select-current.hc-select-focused {outline: 2px solid red;}
+        .hc-select-list {width: 100%;}
+        .hc-select-list li:not(.hc-select-group):hover, .hc-select-highlighted {background-color: red;}
+        .hc-select-list li[data-disabled], .hc-select-group[data-disabled] li {color: gray}
+        .hc-select-list li:not(.hc-select-group)[data-disabled]:hover, .hc-select-group[data-disabled] li:hover {background-color: white}
 
-        .hr-select-list {
+        .hc-select-list {
             list-style: none;
             margin: 0;
             padding: 0;
             position: absolute;
         }
 
-        .hr-select-label {
+        .hc-select-label {
             font-weight: 700;
         }
 
-        .hr-select-group li {
+        .hc-select-group li {
             padding-left: 10px;
         }
 
@@ -41,10 +41,10 @@
     <div>
         <select name="test" data-id="1" style="vertical-align: top">
             <option value="1">Option 1</option>
-            <option value="2" disabled>Disabled</option>
+            <option value="2" disabled>Option 2 - Disabled</option>
             <option value="3" selected>Option 3</option>
-            <option value="4">Option 4</option>
-            <option value="5">Option 5</option>
+            <option value="4" disabled>Option 4 - Disabled</option>
+            <option value="5" disabled>Option 5 - Disabled</option>
         </select>
     </div>
     <br><br><br><br><br><br>
@@ -54,10 +54,15 @@
             <option value="1">Option 1</option>
             <option value="2">Option 2</option>
         </optgroup>
-        <!-- <option value="2.5">Option 2.5</option>  -->
+        <option value="2.5">Option 2.5</option> 
+        <optgroup label="Group B" disabled>
+                <option value="3">Option 3</option>
+                <option value="4">Option 4</option>
+            <option value="5">Option 5</option>
+        </optgroup>
         <optgroup label="Group B">
-           <!--  <option value="3">Option 3</option>
-            <option value="4">Option 4</option> -->
+                <option value="3">Option 3</option>
+                <option value="4">Option 4</option>
             <option value="5">Option 5</option>
         </optgroup>
     </select>
