@@ -6,13 +6,16 @@
     <script src="dom4.js"></script>
     <script src="my-query.js"></script>
     <script src="my-query-event.js"></script>
+    <script src="my-query-traversing.js"></script>
 
     <style>
         .hr-select-wrapper {position: relative; display: inline-block;}
-        .hr-select-search, .hr-select-wrapper select {position: absolute; transform: rotateY(90deg);}
-        .hr-select-current {width: 200px; border: 1px solid black;}
-        .hr-select-list {display: none;}
-        .hr-select-list li:not(.hr-select-group):hover {background-color: red;}
+        /*.hr-select-search{position: absolute; transform: rotateY(90deg);}*/
+        .hr-select-wrapper select {position: relative;left: 300px;}
+        .hr-select-current { border: 1px solid black;}
+        .hr-select-current.hr-select-focused {outline: 2px solid red;}
+        .hr-select-list {width: 100%;}
+        .hr-select-list li:not(.hr-select-group):hover, .hr-select-highlighted {background-color: red;}
         .hr-select-list li[data-disabled], .hr-select-group[data-disabled] li {color: gray}
         .hr-select-list li:not(.hr-select-group)[data-disabled]:hover, .hr-select-group[data-disabled] li:hover {background-color: white}
 
@@ -36,7 +39,7 @@
 <body>
     <p>Usual select</p>
     <div>
-        <select name="test" id="test" style="vertical-align: top">
+        <select name="test" data-id="1" style="vertical-align: top">
             <option value="1">Option 1</option>
             <option value="2" disabled>Disabled</option>
             <option value="3" selected>Option 3</option>
@@ -46,17 +49,16 @@
     </div>
     <br><br><br><br><br><br>
     <p>With optgroup</p>
-    <select name="test2" id="test2" style="vertical-align: top">
+    <select name="test2" data-id="2" style="vertical-align: top">
         <optgroup label="Group A" id='group' disabled>
             <option value="1">Option 1</option>
             <option value="2">Option 2</option>
         </optgroup>
-        <option value="2.5">Option 2.5</option> 
+        <!-- <option value="2.5">Option 2.5</option>  -->
         <optgroup label="Group B">
-            <option value="3">Option 3</option>
-            <option value="4">Option 4</option>
+           <!--  <option value="3">Option 3</option>
+            <option value="4">Option 4</option> -->
             <option value="5">Option 5</option>
-            
         </optgroup>
     </select>
 
