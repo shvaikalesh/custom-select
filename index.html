@@ -10,12 +10,12 @@
 
     <style>
         .hc-select-wrapper {position: relative; display: inline-block;}
-        /*.hc-select-search{position: absolute; transform: rotateY(90deg);}*/
+        .hc-select-search{position: absolute; transform: rotateY(90deg);}
         .hc-select-wrapper select {position: relative;left: 300px;}
         .hc-select-current { border: 1px solid black;}
         .hc-select-current.hc-select-focused {outline: 2px solid red;}
         .hc-select-list {width: 100%;}
-        .hc-select-list li:not(.hc-select-group):hover, .hc-select-highlighted {background-color: red;}
+        .hc-select-highlighted {background-color: red;}
         .hc-select-list li[data-disabled], .hc-select-group[data-disabled] li {color: gray}
         .hc-select-list li:not(.hc-select-group)[data-disabled]:hover, .hc-select-group[data-disabled] li:hover {background-color: white}
 
@@ -38,18 +38,16 @@
 </head>
 <body>
     <p>Usual select</p>
-    <div>
-        <select name="test" data-id="1" style="vertical-align: top">
-            <option value="1">Option 1</option>
-            <option value="2" disabled>Option 2 - Disabled</option>
-            <option value="3" selected>Option 3</option>
-            <option value="4" disabled>Option 4 - Disabled</option>
-            <option value="5" disabled>Option 5 - Disabled</option>
-        </select>
-    </div>
+    <select name="test" id=test data-id="1" style="vertical-align: top">
+        <option value="1" id="testopt">Option 1</option>
+        <option value="2" disabled>Option 2 - Disabled</option>
+        <option value="3">Option 3</option>
+        <option value="4">Option 4</option>
+        <option value="5" disabled>Option 5 - Disabled</option>
+    </select>
     <br><br><br><br><br><br>
     <p>With optgroup</p>
-    <select name="test2" data-id="2" style="vertical-align: top">
+    <select name="test2" id=test2 data-id="2" style="vertical-align: top">
         <optgroup label="Group A" id='group' disabled>
             <option value="1">Option 1</option>
             <option value="2">Option 2</option>

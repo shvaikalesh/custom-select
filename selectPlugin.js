@@ -14,16 +14,19 @@ DocumentFragment.prototype.append = Element.prototype.append;
     function create(tag, name) 
     {
         var element = $('<' + tag + '>')
-            element.className =
-            [
-                , options.COMPANY
-                , options.CONTROL
-                , name
-            ]
-            .filter(String)
-            .join(options.SEPARATOR)
+            element.className = makeName(name);
 
         return element;
+    }
+
+    function makeName(name) 
+    {
+        return [
+                    , options.COMPANY
+                    , options.CONTROL
+                    , name
+                ].filter(String)
+                .join(options.SEPARATOR)
     }
 
     function hide($element) 
@@ -38,30 +41,36 @@ DocumentFragment.prototype.append = Element.prototype.append;
             || $element
     }
 
-    var classes = {}
+    var classes = 
+    {
+        highlighted:  makeName('highlighted'),
+        focused:      makeName('focused'),
+        group:        makeName('group'),
+        label:        makeName('label')
+    }
 
     // Init plugin.
     var selectElements = $$('select:not([mutiple])')
         selectElements.forEach(replaceSelectElement)
     // Var to store current opened HCSelect.
-    var currentOpenedCustomSelect
+    var currentOpenedHCSelect
 
     // Replace <select> with custom structure.
-    function replaceSelectElement(select) {
+    function replaceSelectElement(select) 
+    {
         var customOptionsArray = [];
         /*
          *  CUSTOM SELECT.
          */
         var HCSelect = create('div', 'wrapper')
         select.before(HCSelect)
-        select.tabIndex = -1
-        classes.wrapper = HCSelect.className
-
-        HCSelect.dataset.id = select.dataset.id; // debug
+        // select.tabIndex = -1 // Fix HCSelect tab behaviour
 
         // Blocks.
-        function addHCPrefixedBlock(parent) {
-            return function(type, className) {
+        function addHCPrefixedBlock(parent) 
+        {
+            return function(type, className) 
+            {
                 var block = create(type, className);
                 parent.append(block);
                 return block;
@@ -72,17 +81,42 @@ DocumentFragment.prototype.append = Element.prototype.append;
         var HCSelectBefore = addBlockToHCSelect('div', 'before');
 
         var HCSelectCurrent = addBlockToHCSelect('div', 'current');
-            HCSelectCurrent.textContent = select.options[select.selectedIndex].textContent;
+            HCSelectCurrent.textContent = select.options[select.selectedIndex]
+                                                .textContent;
 
         var HCSelectAfter = addBlockToHCSelect('div', 'after');
 
         var HCSelectList = addBlockToHCSelect('ul', 'list');
             hide(HCSelectList);
+            
 
         // Transfer select children.
-        function transferChildren(parent) {
+        function transferChildren(parent)
+        {   
+            // Attach MutationObservers.
+            // function attachMO($element, $related)
+            // {
+            //     var config =
+            //     {
+            //         attributes: true,
+            //         childList: true,
+            //         characterData: true,
+            //         subtree: true
+            //     }
 
-            return Array.prototype.map.call(parent.children, function(child) {
+            //     var observer = new MutationObserver(function(mutations)
+            //     {
+            //         mutations.forEach(function(mutation) {
+            //             console.log(mutation);
+            //         });
+            //     })
+            //     // pass in the target node, as well as the observer options
+            //     observer.observe($element, config)
+                 
+            // }
+
+            return Array.prototype.map.call(parent.children, function(child) 
+            {
                 var newChild = $('<li>');
                 if (child.disabled)
                         newChild.setAttribute('data-disabled', '');
@@ -97,11 +131,12 @@ DocumentFragment.prototype.append = Element.prototype.append;
                         break;
 
                     case 'optgroup':
-                        newChild.classList.add('hc-select-group');
+                        newChild.classList.add(classes.group);
                         var label = create('div', 'label');
                         label.textContent = child.label;
                         newChild.append(label);
-                        newChild.append.apply(newChild, transferChildren(child));
+                        newChild.append
+                                .apply(newChild, transferChildren(child));
                         break;
                 }
                 return newChild;
@@ -111,10 +146,11 @@ DocumentFragment.prototype.append = Element.prototype.append;
         HCSelectList.append.apply(HCSelectList, transferChildren(select));
 
         // Transfer select siblings.
-        var selectSiblings = new DocumentFragment(); // TODO: POLYFILL
+        var selectSiblings = new DocumentFragment();
         var allowedSiblings = ['label', 'div', 'span'].join();
         var currentSibling;
-        while (currentSibling = select.nextElementSibling) {
+        while (currentSibling = select.nextElementSibling) 
+        {
             if (currentSibling.matches(allowedSiblings)) 
                 selectSiblings.append(select.nextElementSibling);
             else
@@ -127,73 +163,99 @@ DocumentFragment.prototype.append = Element.prototype.append;
         var HCSelectSearch = addBlockToHCSelect('input', 'search');
             HCSelectSearch.type = 'search';
 
-
-
-
+        // Save classes.
+        classes.wrapper = HCSelect.className
+        classes.before = HCSelectBefore.className;
+        classes.current = HCSelectCurrent.className;
+        classes.after = HCSelectAfter.className;
+        classes.list = HCSelectList.className;
+        classes.search = HCSelectSearch.className;
 
         // Assign handlers.
         // Open/close HCSelect.
-        function toggleSelect(e) {
-            if (getComputedStyle(HCSelectList).display == 'none') {
-                if (currentOpenedCustomSelect)
-                    hide(currentOpenedCustomSelect);
-                show(HCSelectList);
-                currentOpenedCustomSelect = HCSelectList;
-            } else 
-                    show(HCSelectList);
+        function toggleSelect() 
+        {
+            if (currentOpenedHCSelect && currentOpenedHCSelect != HCSelectList)
+                hide(currentOpenedHCSelect)
+            if (getComputedStyle(HCSelectList).display == 'none')
+                show(HCSelectList)
+            else
+                hide(HCSelectList)
+            currentOpenedHCSelect = HCSelectList
         }
-        $.on(HCSelectCurrent, 'click', toggleSelect);
 
         // Detect HCSelectList events.
-        $.on(HCSelectList, 'click', (e) => {
-            if (e.target == HCSelectList || e.target.classList.contains('hc-select-label') || e.target.closest('li[data-disabled]'))
+        // Helper - Filter unwanted <li>.
+        function unwantedTarget(target)
+        {
+            if (target == HCSelectList || 
+                target.classList.contains(classes.label) || 
+                target.closest('li[data-disabled]'))
+                return true;
+        }
+        $.on(HCSelectList, 'click', (e) => 
+        {
+            if (unwantedTarget(e.target))  
+            {   
+                HCSelectSearch.focus();
                 return;
+            }
             else {
                 HCSelectCurrent.textContent = e.target.textContent;
                 select.selectedIndex = customOptionsArray.indexOf(e.target);
                 hide(HCSelectList);
             }
         });
+        $.on(HCSelectList, 'mouseover', function(e)
+        {
+            if (unwantedTarget(e.target)) return;
+            else e.target.classList.add(classes.highlighted);
+        });
+        $.on(HCSelectList, 'mouseout', function(e)
+        {
+            if (unwantedTarget(e.target)) return;
+            else e.target.classList.remove(classes.highlighted);
+        });
 
         // Focus on click.
-        $.on(HCSelectCurrent, 'click', function() {
+        $.on(HCSelectCurrent, 'click', function(e) {
+            toggleSelect();
             HCSelectSearch.focus();
         });
         // Handle select focus/blur.
         $.on(HCSelectSearch, 'focus', function() {
-            HCSelectList.style.removeProperty('display');
-            HCSelectCurrent.classList.toggle('hc-select-focused');
+            // toggleSelect();
+            HCSelectCurrent.classList.toggle(classes.focused);
         });
-        $.on(HCSelectSearch, 'blur', function() {
-            hide(HCSelectList);
-            HCSelectCurrent.style.outline = '';
-            HCSelectCurrent.classList.toggle('hc-select-focused');
-            var selected = HCSelectList.query('.hc-select-highlighted');
+        $.on(HCSelectSearch, 'blur', function(e) {
+            var selected = HCSelectList.query('.'+classes.highlighted);
             if (selected)
-                selected.classList.remove('hc-select-highlighted');
+                selected.classList.remove(classes.highlighted);
+            HCSelectCurrent.classList.toggle(classes.focused);
         });
 
         // Handle keyboard.
-        $.on(HCSelectSearch, 'keydown', function(e) {
+        $.on(HCSelect, 'keydown', function(e) {
             // Highlight next valid sibling.
             function highlightNext(el) {
-                var highlighted = $('.hc-select-highlighted');
+                var highlighted = $('.'+classes.highlighted);
                 var next;
 
                 if (el.contains(highlighted)) {
                     next = getNextValidLi(highlighted);
                     if (next) {
-                        highlighted.classList.toggle('hc-select-highlighted');
-                        next.classList.toggle('hc-select-highlighted');
+                        highlighted.classList.toggle(classes.highlighted);
+                        next.classList.toggle(classes.highlighted);
                     }
                     else return;
                 }
                 else {
                     next = getNextValidLi(el);
                     if (next)
-                        next.classList.toggle('hc-select-highlighted');
+                        next.classList.toggle(classes.highlighted);
                 }
             }
+
             // Helper for highlightNext().
             function getNextValidLi(current) {
                 var next = current.firstElementChild ||
@@ -204,7 +266,7 @@ DocumentFragment.prototype.append = Element.prototype.append;
                 if (next && (next.dataset.hasOwnProperty('disabled') || 
                     next.parentElement.dataset.hasOwnProperty('disabled') ||
                     next.tagName != 'LI' || 
-                    next.classList.contains('hc-select-group'))) 
+                    next.classList.contains(classes.group))) 
                 {
                         next = getNextValidLi(next);
                 }
@@ -212,33 +274,73 @@ DocumentFragment.prototype.append = Element.prototype.append;
             }
 
             // Highlight prev valid sibling.
-            /*function highlightPrev(el) {
-                // TODO
-                var highlighted = $('.hc-select-highlighted');
+            function highlightPrev(el) {
+                var highlighted = el.query('.'+classes.highlighted);
                 var prev;
 
                 if (el.contains(highlighted)) {
                     prev = getPrevValidLi(highlighted);
                     if (prev) {
-                        highlighted.classList.toggle('hc-select-highlighted');
-                        prev.classList.toggle('hc-select-highlighted');
+                        highlighted.classList.remove(classes.highlighted);
+                        prev.classList.add(classes.highlighted);
                     }
                     else return;
                 }
                 else {
-                    prev = getNextValidLi(el);
+                    prev = getPrevValidLi(el);
                     if (prev)
-                        prev.classList.toggle('hc-select-highlighted');
+                        prev.classList.toggle(classes.highlighted);
                 }
-            }*/
+            }
+
+            // Helper for highlightPrev().
+            function getPrevValidLi(current) {
+                if (current == current.parentElement.firstElementChild &&
+                    current.parentElement == HCSelectList) return;
+
+                var prev = current.lastElementChild ||
+                           current.previousElementSibling ||
+                           current.parentElement.previousElementSibling;
+
+                if (prev && (prev.dataset.hasOwnProperty('disabled') || 
+                    prev.parentElement.dataset.hasOwnProperty('disabled') ||
+                    prev.tagName != 'LI' || 
+                    prev.classList.contains(classes.group))) 
+                {
+                        prev = getPrevValidLi(prev);
+                }
+                return prev;
+            }
 
             var openedSelect;
-            if (openedSelect = HCSelect.query('.hc-select-focused')) {
-                switch(e.which) {
-                    // case 38:
-                    //     highlightPrev(HCSelectList);
-                    case 40:
+            if (openedSelect = HCSelect.query('.'+classes.focused)) 
+            {
+                switch(e.which) 
+                {
+                    case 9: // Tab
+                        hide(openedSelect.parentElement
+                                         .query('.'+classes.list));
+                        break
+                    case 13: // Enter
+                        var highlighted = HCSelectList.query('.'+classes.highlighted)
+                        if (highlighted) 
+                        {
+                            select.selectedIndex = customOptionsArray
+                              .indexOf(highlighted)
+                            HCSelectCurrent.textContent = highlighted.textContent
+                        }
+                        toggleSelect()
+                        break
+                    case 27: // Esc
+                        if (currentOpenedHCSelect)
+                            toggleSelect()
+                        break
+                    case 38: // UpArrow
+                        highlightPrev(HCSelectList);
+                        break
+                    case 40: // DownArrow
                         highlightNext(HCSelectList);
+                        break
                 }
             }
         });
@@ -246,9 +348,9 @@ DocumentFragment.prototype.append = Element.prototype.append;
 
     // Detect clicks outside of HCSelectList.
     $.on(document, 'click', (e) => {
-        var cS = e.target.closest('.hc-select-wrapper');
-        if (!cS && currentOpenedCustomSelect) {
-            currentOpenedCustomSelect.style.display = 'none';
+        var hc = e.target.closest('.'+classes.wrapper);
+        if (!hc && currentOpenedHCSelect) {
+            currentOpenedHCSelect.style.display = 'none';
         }
     })
 
