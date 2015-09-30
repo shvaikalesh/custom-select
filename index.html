@@ -39,7 +39,7 @@
 <body>
     <p>Usual select</p>
     <select name="test" id=test data-id="1" style="vertical-align: top">
-        <option value="1" id="testopt">Option 1</option>
+        <option value="1" >Option 1</option>
         <option value="2" disabled>Option 2 - Disabled</option>
         <option value="3">Option 3</option>
         <option value="4">Option 4</option>
@@ -49,7 +49,7 @@
     <p>With optgroup</p>
     <select name="test2" id=test2 data-id="2" style="vertical-align: top">
         <optgroup label="Group A" id='group' disabled>
-            <option value="1">Option 1</option>
+            <option value="1" id="opt">Option 1</option>
             <option value="2">Option 2</option>
         </optgroup>
         <option value="2.5">Option 2.5</option> 
@@ -58,9 +58,9 @@
                 <option value="4">Option 4</option>
             <option value="5">Option 5</option>
         </optgroup>
-        <optgroup label="Group B">
-                <option value="3">Option 3</option>
-                <option value="4">Option 4</option>
+        <optgroup label="Group C">
+            <option value="3" id=opt2>Option 3</option>
+            <option value="4">Option 4</option>
             <option value="5">Option 5</option>
         </optgroup>
     </select>
