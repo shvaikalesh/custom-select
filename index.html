@@ -3,10 +3,12 @@
 <head>
     <meta charset="UTF-8">
     <title>Select Plugin</title>
+    <script src="require-module.js"></script>
     <script src="dom4.js"></script>
     <script src="my-query.js"></script>
     <script src="my-query-event.js"></script>
     <script src="my-query-traversing.js"></script>
+    <script src="selectPlugin.js"></script>
 
     <style>
         .hc-select-wrapper {position: relative; display: inline-block;}
@@ -14,7 +16,7 @@
         .hc-select-wrapper select {position: relative;left: 300px;}
         .hc-select-current { border: 1px solid black;}
         .hc-select-current.hc-select-focused {outline: 2px solid red;}
-        .hc-select-list {width: 100%;}
+        .hc-select-list {width: 100%;background-color: white;}
         .hc-select-highlighted {background-color: red;}
         .hc-select-list li[data-disabled], .hc-select-group[data-disabled] li {color: gray}
         .hc-select-list li:not(.hc-select-group)[data-disabled]:hover, .hc-select-group[data-disabled] li:hover {background-color: white}
@@ -48,7 +50,7 @@
     <br><br><br><br><br><br>
     <p>With optgroup</p>
     <select name="test2" id=test2 data-id="2" style="vertical-align: top">
-        <!-- <optgroup label="Group A" id='group' disabled>
+        <optgroup label="Group A" id='group' disabled>
             <option value="1" id="opt">Option 1</option>
             <option value="2">Option 2</option>
         </optgroup>
@@ -62,13 +64,17 @@
             <option value="3" id=opt2>Option 3</option>
             <option value="4">Option 4</option>
             <option value="5">Option 5</option>
-        </optgroup> -->
+        </optgroup>
     </select>
     <br><br>
-    <button onclick="testA()">Add Opt</button onclick="test">
-    <button onclick="testB()">Add OptGroup</button onclick="test">
-    <button onclick="testC()">Clear Select</button onclick="test">
-    <script src="selectPlugin.js"></script>
+    <button onclick="testA()">Add Opt</button>
+    <button onclick="testB()">Add OptGroup</button>
+    <button onclick="testC()">Clear Select</button>
+    <script>
+        var selectPlugin = require('selectplugin')
+        selectPlugin($$('select'), {})
+        window.onerror = function(e) {console.log(new Error().stack)}
+    </script>
     <script>
 
         var i = 0;
