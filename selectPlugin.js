@@ -83,6 +83,7 @@ DocumentFragment.prototype.append = Element.prototype.append
         var HCSelectBefore = addBlockToHCSelect('div', 'before')
 
         var HCSelectCurrent = addBlockToHCSelect('div', 'current')
+        if (select.options.length>0)
             HCSelectCurrent.textContent = select.options[select.selectedIndex]
                                                 .textContent
 
@@ -93,36 +94,36 @@ DocumentFragment.prototype.append = Element.prototype.append
             
 
         // Transfer select children.
-        
-        function transferChildren(parent)
-        {   
+        function build(node)
+        {
+            var newNode = $('<li>')
+                if (node.disabled)
+                        newNode.setAttribute('data-disabled', '')
 
-            return Array.prototype.map.call(parent.children, function(child) 
-            {
-                var newChild = $('<li>')
-                if (child.disabled)
-                        newChild.setAttribute('data-disabled', '')
-
-                var tag = child.tagName.toLowerCase()
+                var tag = node.tagName.toLowerCase()
 
                 switch (tag)
                 {
                     case 'option':
-                        newChild.textContent = child.textContent
-                        customOptionsArray.push(newChild)
+                        newNode.textContent = node.textContent
+                        customOptionsArray.push(newNode)
                         break
 
                     case 'optgroup':
-                        newChild.classList.add(classes.group)
+                        newNode.classList.add(classes.group)
                         var label = create('div', 'label')
-                        label.textContent = child.label
-                        newChild.append(label)
-                        newChild.append
-                                .apply(newChild, transferChildren(child))
+                        label.textContent = node.label
+                        newNode.append(label)
+                        newNode.append
+                                .apply(newNode, transferChildren(node))
                         break
                 }
-                return newChild
-            })
+                return newNode
+        }
+        
+        function transferChildren(parent)
+        {   
+            return Array.prototype.map.call(parent.children, build)
         }
         HCSelectList.append.apply(HCSelectList, transferChildren(select))
 
@@ -181,7 +182,8 @@ DocumentFragment.prototype.append = Element.prototype.append
                 HCSelectSearch.focus()
                 return
             }
-            else {
+            else 
+            {
                 HCSelectCurrent.textContent = e.target.textContent
                 select.selectedIndex = customOptionsArray.indexOf(e.target)
                 hide(HCSelectList)
@@ -190,7 +192,11 @@ DocumentFragment.prototype.append = Element.prototype.append
         $.on(HCSelectList, 'mouseover', function(e)
         {
             if (unwantedTarget(e.target)) return
-            else e.target.classList.add(classes.highlighted)
+            var selected
+            if ((selected = HCSelectList.query('.'+classes.highlighted)) &&
+                 selected != e.target) 
+                 selected.classList.remove(classes.highlighted)
+            e.target.classList.add(classes.highlighted)
         })
         $.on(HCSelectList, 'mouseout', function(e)
         {
@@ -307,6 +313,7 @@ DocumentFragment.prototype.append = Element.prototype.append
                 {
                     case 9: // Tab
                         hide(openedSelect.parentElement.query('.'+classes.list))
+                        updateHC()
                         break
                     case 13: // Enter
                         var highlighted = HCSelectList.query('.'+classes.highlighted)
@@ -337,9 +344,13 @@ DocumentFragment.prototype.append = Element.prototype.append
         })
 
         // OBSERVE MUTATIONS
-        var allOpts = $$('option,optgroup'), 
+        var allOpts, allHCOpts
+        updateOptLists()
+
+        function updateOptLists() {
+            allOpts = $$('option,optgroup'), 
             allHCOpts = $$('.'+classes.list+' li')
-        console.group(allOpts, allHCOpts)
+        }
 
         // Attach MutationObservers.
         var config =
@@ -352,22 +363,53 @@ DocumentFragment.prototype.append = Element.prototype.append
 
         var observer = new MutationObserver(function(mutations)
         {
+            // TODO
             mutations.forEach(function(mutation) 
             {
                 switch(mutation.type) 
                 {
                     case 'childList':
-                        if (mutation.removedNodes) {
-                            Array.prototype.forEach.call(mutation.removedNodes, function(node) 
+                        if (mutation.removedNodes.length>0) {
+                            console.log('Removed:',mutation.removedNodes);
+                            [].forEach.call(mutation.removedNodes, function(node) 
                             {
-                                var index = allOpts.indexOf(node)
-                                allHCOpts[index].remove()
+                                if (node.nodeType==1) {
+                                    var index = allOpts.indexOf(node)
+                                    allHCOpts[index].remove()
+                                }
                             })
                         }
-                        else if (mutation.addedNodes)
+                        else if (mutation.addedNodes.length>0)
                         {
-                            // TODO
+                            console.log('Added:', mutation);
+                            var previousSibling = mutation.previousSibling
+                            var position = (previousSibling.nodeType==3) ?
+                                            previousSibling.previousElementSibling :
+                                            previousSibling
+                            var HCposition
+
+                            if (position) 
+                            {
+                                var index = allOpts.indexOf(position)
+                                HCposition = allHCOpts[index]
+                            } 
+                            else 
+                                position = HCSelectList;
+
+                            [].forEach.call(mutation.addedNodes, function(node)
+                            {
+                                var newNode = build(node)
+
+                                if (HCposition) 
+                                    HCposition.after(newNode)
+                                else
+                                {
+                                    position.append(newNode)
+                                    HCSelectCurrent.textContent = customOptionsArray[0].textContent
+                                }
+                            })
                         }
+                        updateOptLists()
                         break
                 }
                 
