@@ -3,60 +3,35 @@
 (function() 
 {
     "use strict"
-    // Helpers.
-    function hide($element) 
+
+    module.exports = function(selects, settings)
     {
-        return $element.style.setProperty('display', 'none')
-            || $element
-    }
-
-    function show($element)
-    {
-        return $element.style.removeProperty('display')
-            || $element
-    }
-
-    function transfer(from, to, map)
-    {   
-        if (arguments.length == 2)
-            return to.append.apply(to, from.children)
-        
-        var children = [].map.call(from.children, map)
-        return to.append.apply(to, children)
-    }
-
-    function next($element, selector)
-    {
-        var $fragment = new DocumentFragment
-        var $sibling
-
-        while ($sibling = $element.nextElementSibling) 
+        Object.assign(settings || { },
         {
-            if (!$sibling.matches(selector)) break
-
-            $fragment.append($sibling)
-        }
-
-        return $fragment
-    }
-
-    module.exports = function(selectList, options)
-    {
-        Object.assign(options || {},
-        {
-            NAMESPACE: 'hc',
-            CONTROL: 'select',
-            SEPARATOR: '-',
-            INVALID: 'label'
+            namespace: 'hc',
+            control: 'select',
+            separator: '-',
+            invalid: 'label',
+            template: function($option)
+            {
+                return $option.textContent
+            }
         })
 
-        var CLASSES = 
+        var CLASSES =
+        [
+            , 'highlighted'
+            , 'focused'
+            , 'group'
+            , 'label'
+            , 'disabled'
+        ]
+        .reduce(function(object, name)
         {
-            HIGHLIGHTED:  makeName('highlighted'),
-            FOCUSED:      makeName('focused'),
-            GROUP:        makeName('group'),
-            LABEL:        makeName('label'),
-        }
+            object[name.toUpperCase()] = makeName(name)
+
+            return object
+        },  { })
 
         function create(tag, name) 
         {
@@ -72,80 +47,97 @@
             return element
         }
 
-        function makeName(name) 
+        function makeName(name)
         {
             return Array,
             [
-                , options.NAMESPACE
-                , options.CONTROL
+                , settings.namespace
+                , settings.control
                 , name
             ]
             .filter(String)
-            .join(options.SEPARATOR)
+            .join(settings.separator)
         }
 
-        // Var to store current opened $wrapper.
-        var currentOpenedHCSelect
-
-        // Replace <select> with custom structure.
-        function replaceSelectElement($select) 
+        .map(function($select) 
         {
-            var customOptionsArray = []
-
-            /*
-             *  CUSTOM SELECT.
-             */
-            var $wrapper = create('wrapper')
-            $select.before($wrapper)
-            // select.tabIndex = -1
-
-            // Blocks.
-            function append() 
+            return $select.ownerDocument
+        })
+        .filter(unique)
+        .map(function($document)
+        {
+            return {owner: $document}
+        })
+        selects.forEach(function($doc)
+        {
+            $.on($doc.owner, 'click', function(event)
             {
-                return $wrapper.appendChild(create.apply(this, arguments))
+                var hc = e.target.closest('.'+CLASSES.WRAPPER)
+                if (!hc && currentOpenedHCSelect) {
+                    currentOpenedHCSelect.style.display = 'none'
+                }
+            })
+        })
+
+        selects.forEach(function($select)
+        {
+            var options = new MultiMap()
+
+            function append(/* arguments... */) 
+            {
+                var $element = create.apply(this, arguments)
+
+                return $wrapper.appendChild($element)
             }
 
+            var $wrapper = create('wrapper')
             var $before = append('before')
-
             var $current = append('current')
-
-            if ($select.options.length>0)
-                $current.textContent = $select.options[$select.selectedIndex]
-                                                    .textContent
-
             var $after = append('after')
-
             var $list = hide(append('ul', 'list'))
 
-            // Transfer select children.
-            function build(node)
-            {
-                var item = $('<li>')
-                if (node.disabled) item.dataset.disabled = ''
+            $select.before($wrapper)
+            $select.tabIndex = -1 // ????
 
-                switch (node.tagName.toLowerCase())
+
+
+            // if ($select.options.length>0)
+            //     $current.textContent = $select.options[$select.selectedIndex]
+            //                                         .textContent
+
+
+            function build($element)
+            {
+                var $document = $element.ownerDocument
+                var $item = $document.createElement('li')
+
+                switch ($element.tagName.toLowerCase())
                 {
                     case 'option':
-                        item.textContent = node.textContent
-                        customOptionsArray.push(item)
+                        $item.innerHTML = settings.template($element)
+                        items.push($item)
+
                         break
 
                     case 'optgroup':
-                        var label = create('label')
-                            label.textContent = node.label
+                        var $label = create('label') // ???
+                            $label.textContent = $element.label
 
-                        item.classList.add(CLASSES.GROUP)
-                        item.append(label)
-                        transfer(node, item, build)
-                        break
+                        $item.classList.add(CLASSES.GROUP)
+                        $item.append(label)
+
+                        adopt($element, $item, build)
                 }
-                return item
+
+                if ($element.disabled) $item.dataset.disabled = ''
+
+                return $item
             }
             
-            transfer($select, $list, build);
+            adopt($select, $list, build)
 
             // Transfer select siblings.
-            $wrapper.append(next($select, options.INVALID))
+            $wrapper.append(after($select, options.INVALID))
 
             // Hidden input block.
             var $search = append('input', 'search')
@@ -175,18 +167,19 @@
                 currentOpenedHCSelect = $list
             }
 
-            // Detect $list events.
-            // Helper - Filter unwanted <li>.
-            function unwantedTarget(target)
+            // // Detect $list events.
+            // // Helper - Filter unwanted <li>.
+            // function unwantedTarget(target)
+            // {
+            //     if (target == $list || 
+            //         target.classList.contains(_CLASSES.LABEL) || 
+            //         target.closest('li[data-disabled]'))
+            //         return true
+            // }
+
+            on($list, 'click', function(event) 
             {
-                if (target == $list || 
-                    target.classList.contains(_CLASSES.LABEL) || 
-                    target.closest('li[data-disabled]'))
-                    return true
-            }
-            $.on($list, 'click', (e) => 
-            {
-                if (unwantedTarget(e.target))  
+                if (unwantedTarget(event.target))
                 {   
                     $search.focus()
                     return
@@ -198,7 +191,8 @@
                     hide($list)
                 }
             })
-            $.on($list, 'mouseover', function(e)
+
+            on($list, 'mouseover', function(event)
             {
                 if (unwantedTarget(e.target)) return
                 var selected
@@ -207,23 +201,28 @@
                      selected.classList.remove(_CLASSES.HIGHLIGHTED)
                 e.target.classList.add(_CLASSES.HIGHLIGHTED)
             })
-            $.on($list, 'mouseout', function(e)
+
+            on($list, 'mouseout', function(event)
             {
                 if (unwantedTarget(e.target)) return
                 else e.target.classList.remove(_CLASSES.HIGHLIGHTED)
             })
 
             // Focus on click.
-            $.on($current, 'click', function(e) {
+            on($current, 'click', function(event)
+            {
                 toggleSelect()
                 $search.focus()
             })
+
             // Handle select focus/blur.
-            $.on($search, 'focus', function() {
+            on($search, 'focus', function(event) {
                 $current.classList.toggle(_CLASSES.FOCUSED)
                 customOptionsArray[$select.selectedIndex].classList.add(_CLASSES.HIGHLIGHTED);
             })
-            $.on($search, 'blur', function(e) {
+
+            on($search, 'blur', function(event)
+            {
                 var selected = $list.query('.'+_CLASSES.HIGHLIGHTED)
                 if (selected)
                     selected.classList.remove(_CLASSES.HIGHLIGHTED)
@@ -231,7 +230,8 @@
             })
 
             // Handle keyboard.
-            $.on($wrapper, 'keydown', function(e) {
+            on($wrapper, 'keydown', function(event)
+            {
                 // Highlight next valid sibling.
                 function highlightNext($element) {
                     var highlighted = $element.query('.'+_CLASSES.HIGHLIGHTED)
@@ -323,7 +323,9 @@
                         case 9: // Tab
                             hide(openedSelect.parentElement.query('.'+_CLASSES.LIST))
                             updateHC()
+
                             break
+
                         case 13: // Enter
                             var highlighted = $list.query('.'+_CLASSES.HIGHLIGHTED)
                             if (highlighted) 
@@ -332,23 +334,30 @@
                                 $current.textContent = highlighted.textContent
                             }
                             toggleSelect()
+
                             break
+
                         case 27: // Esc
                             if (currentOpenedHCSelect)
                             {
                                 $('.'+_CLASSES.HIGHLIGHTED).classList.remove(_CLASSES.HIGHLIGHTED)
                                 toggleSelect()
                             }
+
                             break
+
                         case 38: // UpArrow
                         case 37: // LeftArrow
                             highlightPrev($list)
                             updateHC()
+
                             break
+
                         case 39: // RightArrow
                         case 40: // DownArrow
                             highlightNext($list)
                             updateHC()
+
                             break
                     }
                 }
@@ -426,42 +435,53 @@
                     
                 })
             })
+
             observer.observe($select, config)
-                 
-
-        } // replaceSelectElement.
-
-
-        // Detect clicks outside of $list.
-        function unique(element, index, array) {
-            return array.indexOf(element) == index
-        }
-
-        var selects = selectList
-        .map(function($select) 
-        {
-            return $select.ownerDocument
         })
-        .filter(unique)
-        .map(function($document)
-        {
-            return {owner: $document}
-        })
-        selects.forEach(function($doc)
-        {
-            $.on($doc.owner, 'click', function(e) 
-            {
-                var hc = e.target.closest('.'+CLASSES.WRAPPER)
-                if (!hc && currentOpenedHCSelect) {
-                    currentOpenedHCSelect.style.display = 'none'
-                }
-            })
-        })
-
-        // Init plugin.
-        selectList.forEach(replaceSelectElement)
     }
 
-    
+    function on($emitter, type, handler)
+    {
+        return $emitter.addEventListener(type, handler)
+            || $emitter
+    }
 
+    function hide($element) 
+    {
+        return $element.style.setProperty('display', 'none')
+            || $element
+    }
+
+    function show($element)
+    {
+        return $element.style.removeProperty('display')
+            || $element
+    }
+
+    function adopt(from, to, map)
+    {   
+        if (arguments.length == 2)
+            return to.append.apply(to, from.children)
+
+        var children = [ ].map.call(from.children, map)
+
+        return to.append.apply(to, children)
+            || to
+    }
+
+    function after($sibling, selector)
+    {
+        var $fragment = new DocumentFragment()
+
+        while ($sibling = $sibling.nextElementSibling)
+            if ($sibling.matches(selector))
+                $fragment.append($sibling)
+
+        return $fragment
+    }
+
+    function unique(element, index, array)
+    {
+        return array.indexOf(element) == index
+    }
 })()
