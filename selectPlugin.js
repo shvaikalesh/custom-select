@@ -1,5 +1,3 @@
-// DocumentFragment.prototype.append = Element.prototype.append
-
 (function() 
 {
     "use strict"
@@ -25,6 +23,8 @@
             , 'group'
             , 'label'
             , 'disabled'
+            , 'closed'
+            , 'opened'
         ]
         .reduce(function(object, name)
         {
@@ -58,26 +58,6 @@
             .filter(String)
             .join(settings.separator)
         }
-
-        .map(function($select) 
-        {
-            return $select.ownerDocument
-        })
-        .filter(unique)
-        .map(function($document)
-        {
-            return {owner: $document}
-        })
-        selects.forEach(function($doc)
-        {
-            $.on($doc.owner, 'click', function(event)
-            {
-                var hc = e.target.closest('.'+CLASSES.WRAPPER)
-                if (!hc && currentOpenedHCSelect) {
-                    currentOpenedHCSelect.style.display = 'none'
-                }
-            })
-        })
 
         selects.forEach(function($select)
         {
@@ -156,15 +136,37 @@
 
             // Assign handlers.
             // Open/close $wrapper.
-            function toggleSelect() 
+            function toggleSelect(event) 
             {
-                if (currentOpenedHCSelect && currentOpenedHCSelect != $list)
-                    hide(currentOpenedHCSelect)
-                if (getComputedStyle($list).display == 'none')
-                    show($list)
-                else
-                    hide($list)
-                currentOpenedHCSelect = $list
+                var $document = event.target.ownerDocument
+
+                var $opened = openedMap.get($document)
+                if ($opened != $list) hide($opened)
+                    
+                if (isHidden($list)) show($list)
+                else hide($list)
+
+                setImmediate(function() 
+                {
+                    openedMap.set($document, $list)
+                })
+            }
+
+            function hide($element) 
+            {
+                $element.classList.add(_CLASSES.CLOSED)
+                $element.classList.remove(_CLASSES.OPENED)
+            }
+
+            function show($element)
+            {
+                $element.classList.remove(_CLASSES.CLOSED)
+                $element.classList.add(_CLASSES.OPENED)
+            }
+
+            function isHidden($element)
+            {
+                return $element.classList.contains(_CLASSES.CLOSED)
             }
 
             // // Detect $list events.
@@ -301,7 +303,7 @@
 
                     if (prev && (prev.dataset.hasOwnProperty('disabled') || 
                         prev.parentElement.dataset.hasOwnProperty('disabled') ||
-                        prev.tagName != 'LI' || 
+                        prev.tagName != 'LI' ||
                         prev.classList.contains(_CLASSES.group))) 
                     {
                             prev = getPrevValidLi(prev)
@@ -438,24 +440,36 @@
 
             observer.observe($select, config)
         })
+
+        var openedMap = new WeakMap()
+
+        // Add document click handlers
+        selects
+        .map(function($select)
+        {
+            return $select.ownedDocument
+        })
+        .filter(unique)
+        .forEach(function($document)
+        {
+            on($document, 'click', hideOpened)
+        })
+
+        function hideOpened(event)
+        {
+            if (openedMap.has($document)) 
+                {
+                    hide(openedMap.get($document))
+                    openedMap.delete($document)
+                }
+        }
+
     }
 
     function on($emitter, type, handler)
     {
         return $emitter.addEventListener(type, handler)
             || $emitter
-    }
-
-    function hide($element) 
-    {
-        return $element.style.setProperty('display', 'none')
-            || $element
-    }
-
-    function show($element)
-    {
-        return $element.style.removeProperty('display')
-            || $element
     }
 
     function adopt(from, to, map)
