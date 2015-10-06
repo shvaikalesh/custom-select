@@ -1,6 +1,8 @@
+setImmediate || (setImmediate = setTimeout)
+
 (function() 
 {
-    "use strict"
+    'use strict'
 
     module.exports = function(selects, settings)
     {
@@ -18,8 +20,9 @@
 
         var CLASSES =
         [
-            , 'highlighted'
-            , 'focused'
+            , 'focus'
+            , 'hover'
+            , 'option'
             , 'group'
             , 'label'
             , 'disabled'
@@ -61,8 +64,6 @@
 
         selects.forEach(function($select)
         {
-            var options = new MultiMap()
-
             function append(/* arguments... */) 
             {
                 var $element = create.apply(this, arguments)
@@ -75,11 +76,10 @@
             var $current = append('current')
             var $after = append('after')
             var $list = hide(append('ul', 'list'))
+            var $hover
 
             $select.before($wrapper)
-            $select.tabIndex = -1 // ????
-
-
+            $select.tabIndex = -1
 
             // if ($select.options.length>0)
             //     $current.textContent = $select.options[$select.selectedIndex]
@@ -89,18 +89,24 @@
             function build($element)
             {
                 var $document = $element.ownerDocument
+
                 var $item = $document.createElement('li')
+                    $item.className = $element.className
 
                 switch ($element.tagName.toLowerCase())
                 {
                     case 'option':
                         $item.innerHTML = settings.template($element)
+                        $item.classList.add(CLASSES.OPTION)
+
+                        if ($item.selected) $hover = $item
+
                         items.push($item)
 
                         break
 
                     case 'optgroup':
-                        var $label = create('label') // ???
+                        var $label = create('h3')
                             $label.textContent = $element.label
 
                         $item.classList.add(CLASSES.GROUP)
@@ -109,12 +115,15 @@
                         adopt($element, $item, build)
                 }
 
-                if ($element.disabled) $item.dataset.disabled = ''
+                if ($element.disabled)
+                    $item.classList.add(CLASSES.DISABLED)
 
                 return $item
             }
             
             adopt($select, $list, build)
+
+
 
             // Transfer select siblings.
             $wrapper.append(after($select, options.INVALID))
@@ -136,13 +145,13 @@
 
             // Assign handlers.
             // Open/close $wrapper.
-            function toggleSelect(event) 
+            function toggleSelect(event)
             {
                 var $document = event.target.ownerDocument
 
                 var $opened = openedMap.get($document)
                 if ($opened != $list) hide($opened)
-                    
+
                 if (isHidden($list)) show($list)
                 else hide($list)
 
@@ -152,62 +161,63 @@
                 })
             }
 
-            function hide($element) 
+            function hide($list) 
             {
-                $element.classList.add(_CLASSES.CLOSED)
-                $element.classList.remove(_CLASSES.OPENED)
+                $list.classList.add(_CLASSES.CLOSED)
+                $list.classList.remove(_CLASSES.OPENED)
             }
 
-            function show($element)
+            function show($list)
             {
-                $element.classList.remove(_CLASSES.CLOSED)
-                $element.classList.add(_CLASSES.OPENED)
+                $list.classList.remove(_CLASSES.CLOSED)
+                $list.classList.add(_CLASSES.OPENED)
             }
 
-            function isHidden($element)
+            function isHidden($list)
             {
-                return $element.classList.contains(_CLASSES.CLOSED)
+                return $list.classList.contains(_CLASSES.CLOSED)
             }
 
-            // // Detect $list events.
-            // // Helper - Filter unwanted <li>.
-            // function unwantedTarget(target)
-            // {
-            //     if (target == $list || 
-            //         target.classList.contains(_CLASSES.LABEL) || 
-            //         target.closest('li[data-disabled]'))
-            //         return true
-            // }
+            // Detect $list events.
+            // Helper - Filter unwanted <li>.
+            function wanted($target)
+            {
+                var $parent = $target.closest('optgroup')
+                if ($parent.classList.contains(_CLASSES.DISABLED))
+                    return false
+
+                // return $target.classList.
+
+                return $target.classList.contains(_CLASSES.DISABLED)
+            }
+
+            function setCurrent($item)
+            {
+                $current.innerHTML = $item.innerHTML
+                $select.value = optionMap.get($item).value
+
+                hide($list)
+            }
 
             on($list, 'click', function(event) 
             {
-                if (unwantedTarget(event.target))
-                {   
-                    $search.focus()
-                    return
-                }
-                else 
-                {
-                    $current.textContent = e.target.textContent
-                    $select.selectedIndex = customOptionsArray.indexOf(e.target)
-                    hide($list)
-                }
+                var $target = event.target
+                if ($target.matches(CLASSES.OPTION)) setCurrent($target)
+                else $search.focus()
             })
 
             on($list, 'mouseover', function(event)
             {
-                if (unwantedTarget(e.target)) return
-                var selected
-                if ((selected = $list.query('.'+_CLASSES.HIGHLIGHTED)) &&
-                     selected != e.target) 
-                     selected.classList.remove(_CLASSES.HIGHLIGHTED)
-                e.target.classList.add(_CLASSES.HIGHLIGHTED)
+                var $target = event.target
+                if ($target.matches(CLASSES.OPTION))
+                    $target.classList.add(CLASSES.HOVER)
             })
 
             on($list, 'mouseout', function(event)
             {
-                if (unwantedTarget(e.target)) return
-                else e.target.classList.remove(_CLASSES.HIGHLIGHTED)
+                var $target = event.target
+                if ($target.matches(CLASSES.OPTION))
+                    $target.classList.remove(CLASSES.HOVER)
             })
 
             // Focus on click.
@@ -441,7 +451,9 @@
             observer.observe($select, config)
         })
 
-        var openedMap = new WeakMap()
+        var openedMap = new WeakMap(/* <document, div> */)
+        var optionMap = new WeakMap(/* <item, option> */)
+        var itemMap = new WeakMap(/* <option, item> */)
 
         // Add document click handlers
         selects
