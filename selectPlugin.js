@@ -1,4 +1,4 @@
-setImmediate || (setImmediate = setTimeout)
+// setImmediate || (setImmediate = setTimeout)
 
 (function() 
 {
@@ -28,6 +28,13 @@ setImmediate || (setImmediate = setTimeout)
             , 'disabled'
             , 'closed'
             , 'opened'
+
+            , 'wrapper'
+            , 'before'
+            , 'current'
+            , 'after'
+            , 'list'
+            , 'search'
         ]
         .reduce(function(object, name)
         {
@@ -45,7 +52,7 @@ setImmediate || (setImmediate = setTimeout)
             }
 
             var element = document.createElement(tag)
-                element.className = makeName(name)
+                element.className = CLASSES[name.toUpperCase()]
 
             return element
         }
@@ -62,8 +69,29 @@ setImmediate || (setImmediate = setTimeout)
             .join(settings.separator)
         }
 
+        function hide($list) 
+        {
+            $list.classList.add(CLASSES.CLOSED)
+            $list.classList.remove(CLASSES.OPENED)
+
+            return $list
+        }
+
+        function show($list)
+        {
+            $list.classList.remove(CLASSES.CLOSED)
+            $list.classList.add(CLASSES.OPENED)
+
+            return $list
+        }
+
+        var openedMap = new WeakMap(/* <document, div> */)
+        var optionMap = new WeakMap(/* <item, option> */)
+        var itemMap = new WeakMap(/* <option, item> */)
+
         selects.forEach(function($select)
         {
+
             function append(/* arguments... */) 
             {
                 var $element = create.apply(this, arguments)
@@ -78,13 +106,10 @@ setImmediate || (setImmediate = setTimeout)
             var $list = hide(append('ul', 'list'))
             var $hover
 
+            var validOptionsArray = []
+
             $select.before($wrapper)
             $select.tabIndex = -1
-
-            // if ($select.options.length>0)
-            //     $current.textContent = $select.options[$select.selectedIndex]
-            //                                         .textContent
-
 
             function build($element)
             {
@@ -99,18 +124,26 @@ setImmediate || (setImmediate = setTimeout)
                         $item.innerHTML = settings.template($element)
                         $item.classList.add(CLASSES.OPTION)
 
-                        if ($item.selected) $hover = $item
+                        if ($element.selected)
+                        {
+                            setCurrent($item)
+                            $hover = $item
+                        }
 
-                        items.push($item)
+                        if (!$element.disabled &&
+                            !$element.parentElement.disabled)
+                            validOptionsArray.push($item)
+
+                        optionMap.set($item, $element)
 
                         break
 
                     case 'optgroup':
-                        var $label = create('h3')
+                        var $label = create('h3', 'label')
                             $label.textContent = $element.label
 
                         $item.classList.add(CLASSES.GROUP)
-                        $item.append(label)
+                        $item.append($label)
 
                         adopt($element, $item, build)
                 }
@@ -120,28 +153,15 @@ setImmediate || (setImmediate = setTimeout)
 
                 return $item
             }
-            
+
             adopt($select, $list, build)
 
-
-
             // Transfer select siblings.
-            $wrapper.append(after($select, options.INVALID))
+            $wrapper.append(after($select, settings.INVALID))
 
             // Hidden input block.
             var $search = append('input', 'search')
                 $search.type = 'search'
-
-            // Save CLASSES.
-            var _CLASSES = Object.assign(Object.create(CLASSES),
-            {
-                WRAPPER: $wrapper.className,
-                BEFORE: $before.className,
-                CURRENT: $current.className,
-                AFTER: $after.className,
-                LIST: $list.className,
-                SEARCH: $search.className
-            })
 
             // Assign handlers.
             // Open/close $wrapper.
@@ -149,54 +169,49 @@ setImmediate || (setImmediate = setTimeout)
             {
                 var $document = event.target.ownerDocument
 
-                var $opened = openedMap.get($document)
-                if ($opened != $list) hide($opened)
+                if (openedMap.has($document)) {
+                    var $opened = openedMap.get($document)
+                    if ($opened != $list) hide($opened)
+                }
 
                 if (isHidden($list)) show($list)
                 else hide($list)
 
-                setImmediate(function() 
+                setTimeout(function() // setImmediate
                 {
                     openedMap.set($document, $list)
                 })
             }
 
-            function hide($list) 
-            {
-                $list.classList.add(_CLASSES.CLOSED)
-                $list.classList.remove(_CLASSES.OPENED)
-            }
-
-            function show($list)
-            {
-                $list.classList.remove(_CLASSES.CLOSED)
-                $list.classList.add(_CLASSES.OPENED)
-            }
+            
 
             function isHidden($list)
             {
-                return $list.classList.contains(_CLASSES.CLOSED)
+                return $list.classList.contains(CLASSES.CLOSED)
             }
 
             // Detect $list events.
             // Helper - Filter unwanted <li>.
-            function wanted($target)
-            {
-                var $parent = $target.closest('optgroup')
-                if ($parent.classList.contains(_CLASSES.DISABLED))
-                    return false
-
-                // return $target.classList.
-
-                return $target.classList.contains(_CLASSES.DISABLED)
-            }
 
             function setCurrent($item)
             {
                 $current.innerHTML = $item.innerHTML
-                $select.value = optionMap.get($item).value
 
-                hide($list)
+                if (optionMap.has($item)) 
+                {
+                    $select.value = optionMap.get($item).value
+                    hide($list)
+                }
+            }
+
+            function wanted($target)
+            {
+                var $parent = $target.parentElement
+                
+                if ($parent && $parent.classList.contains(CLASSES.DISABLED))
+                    return false
+
+                return !$target.classList.contains(CLASSES.DISABLED)
             }
 
             on($list, 'click', function(event) 
@@ -209,36 +224,41 @@ setImmediate || (setImmediate = setTimeout)
             on($list, 'mouseover', function(event)
             {
                 var $target = event.target
-                if ($target.matches(CLASSES.OPTION))
+                
+                if ($target == $list || $target == $hover) return
+                if (wanted($target)) 
+                {
+                    $hover.classList.remove(CLASSES.HOVER)
                     $target.classList.add(CLASSES.HOVER)
+                    $hover = $target
+                }
             })
 
             on($list, 'mouseout', function(event)
             {
                 var $target = event.target
-                if ($target.matches(CLASSES.OPTION))
                     $target.classList.remove(CLASSES.HOVER)
             })
 
             // Focus on click.
             on($current, 'click', function(event)
             {
-                toggleSelect()
+                toggleSelect(event)
                 $search.focus()
             })
 
             // Handle select focus/blur.
             on($search, 'focus', function(event) {
-                $current.classList.toggle(_CLASSES.FOCUSED)
-                customOptionsArray[$select.selectedIndex].classList.add(_CLASSES.HIGHLIGHTED);
+                $current.classList.toggle(CLASSES.FOCUS)
+                validOptionsArray[$select.selectedIndex].classList.add(CLASSES.HOVER);
             })
 
             on($search, 'blur', function(event)
             {
-                var selected = $list.query('.'+_CLASSES.HIGHLIGHTED)
+                var selected = $list.query('.'+CLASSES.HOVER)
                 if (selected)
-                    selected.classList.remove(_CLASSES.HIGHLIGHTED)
-                $current.classList.toggle(_CLASSES.FOCUSED)
+                    selected.classList.remove(CLASSES.HOVER)
+                $current.classList.toggle(CLASSES.FOCUS)
             })
 
             // Handle keyboard.
@@ -246,21 +266,21 @@ setImmediate || (setImmediate = setTimeout)
             {
                 // Highlight next valid sibling.
                 function highlightNext($element) {
-                    var highlighted = $element.query('.'+_CLASSES.HIGHLIGHTED)
+                    var highlighted = $element.query('.'+CLASSES.HOVER)
                     var next
 
                     if ($element.contains(highlighted)) {
                         next = getNextValidLi(highlighted)
                         if (next) {
-                            highlighted.classList.toggle(_CLASSES.HIGHLIGHTED)
-                            next.classList.toggle(_CLASSES.HIGHLIGHTED)
+                            highlighted.classList.toggle(CLASSES.HOVER)
+                            next.classList.toggle(CLASSES.HOVER)
                         }
                         else return
                     }
                     else {
                         next = getNextValidLi($element)
                         if (next)
-                            next.classList.toggle(_CLASSES.HIGHLIGHTED)
+                            next.classList.toggle(CLASSES.HOVER)
                     }
 
                 }
@@ -275,7 +295,7 @@ setImmediate || (setImmediate = setTimeout)
                     if (next && (next.dataset.hasOwnProperty('disabled') || 
                         next.parentElement.dataset.hasOwnProperty('disabled') ||
                         next.tagName != 'LI' || 
-                        next.classList.contains(_CLASSES.GROUP))) 
+                        next.classList.contains(CLASSES.GROUP))) 
                     {
                             next = getNextValidLi(next)
                     }
@@ -284,21 +304,21 @@ setImmediate || (setImmediate = setTimeout)
 
                 // Highlight prev valid sibling.
                 function highlightPrev($element) {
-                    var highlighted = $element.query('.'+_CLASSES.HIGHLIGHTED)
+                    var highlighted = $element.query('.'+CLASSES.HOVER)
                     var prev
 
                     if ($element.contains(highlighted)) {
                         prev = getPrevValidLi(highlighted)
                         if (prev) {
-                            highlighted.classList.remove(_CLASSES.HIGHLIGHTED)
-                            prev.classList.add(_CLASSES.HIGHLIGHTED)
+                            highlighted.classList.remove(CLASSES.HOVER)
+                            prev.classList.add(CLASSES.HOVER)
                         }
                         else return
                     }
                     else {
                         prev = getPrevValidLi($element)
                         if (prev)
-                            prev.classList.toggle(_CLASSES.HIGHLIGHTED)
+                            prev.classList.toggle(CLASSES.HOVER)
                     }
                 }
 
@@ -314,7 +334,7 @@ setImmediate || (setImmediate = setTimeout)
                     if (prev && (prev.dataset.hasOwnProperty('disabled') || 
                         prev.parentElement.dataset.hasOwnProperty('disabled') ||
                         prev.tagName != 'LI' ||
-                        prev.classList.contains(_CLASSES.group))) 
+                        prev.classList.contains(CLASSES.group))) 
                     {
                             prev = getPrevValidLi(prev)
                     }
@@ -322,38 +342,38 @@ setImmediate || (setImmediate = setTimeout)
                 }
 
                 function updateHC() {
-                    var h = $list.query('.'+_CLASSES.HIGHLIGHTED)
+                    var h = $list.query('.'+CLASSES.HOVER)
                     $current.textContent = h.textContent
-                    $select.selectedIndex = customOptionsArray.indexOf(h)                    
+                    $select.selectedIndex = validOptionsArray.indexOf(h)                    
                 }
 
                 var openedSelect
-                if (openedSelect = $wrapper.query('.'+_CLASSES.FOCUSED)) 
+                if (openedSelect = $wrapper.query('.'+CLASSES.FOCUS)) 
                 {
-                    switch(e.which) 
+                    switch(event.which) 
                     {
                         case 9: // Tab
-                            hide(openedSelect.parentElement.query('.'+_CLASSES.LIST))
+                            hide(openedSelect.parentElement.query('.'+CLASSES.LIST))
                             updateHC()
 
                             break
 
                         case 13: // Enter
-                            var highlighted = $list.query('.'+_CLASSES.HIGHLIGHTED)
+                            var highlighted = $list.query('.'+CLASSES.HOVER)
                             if (highlighted) 
                             {
-                                $select.selectedIndex = customOptionsArray.indexOf(highlighted)
+                                $select.selectedIndex = validOptionsArray.indexOf(highlighted)
                                 $current.textContent = highlighted.textContent
                             }
-                            toggleSelect()
+                            toggleSelect(event)
 
                             break
 
                         case 27: // Esc
                             if (currentOpenedHCSelect)
                             {
-                                $('.'+_CLASSES.HIGHLIGHTED).classList.remove(_CLASSES.HIGHLIGHTED)
-                                toggleSelect()
+                                $('.'+CLASSES.HOVER).classList.remove(CLASSES.HOVER)
+                                toggleSelect(event)
                             }
 
                             break
@@ -380,8 +400,8 @@ setImmediate || (setImmediate = setTimeout)
             updateOptLists()
 
             function updateOptLists() {
-                allOpts = $$('option,optgroup'), 
-                allHCOpts = $$('.'+_CLASSES.LIST+' li')
+                // allOpts = $$('option,optgroup'), 
+                // allHCOpts = $$('.'+CLASSES.LIST+' li')
             }
 
             // Attach MutationObservers.
@@ -437,7 +457,7 @@ setImmediate || (setImmediate = setTimeout)
                                     else
                                     {
                                         position.append(newNode)
-                                        $current.textContent = customOptionsArray[0].textContent
+                                        $current.textContent = validOptionsArray[0].textContent
                                     }
                                 })
                             }
@@ -451,15 +471,13 @@ setImmediate || (setImmediate = setTimeout)
             observer.observe($select, config)
         })
 
-        var openedMap = new WeakMap(/* <document, div> */)
-        var optionMap = new WeakMap(/* <item, option> */)
-        var itemMap = new WeakMap(/* <option, item> */)
 
+        
         // Add document click handlers
         selects
         .map(function($select)
         {
-            return $select.ownedDocument
+            return $select.ownerDocument
         })
         .filter(unique)
         .forEach(function($document)
@@ -469,6 +487,7 @@ setImmediate || (setImmediate = setTimeout)
 
         function hideOpened(event)
         {
+            var $document = event.target.ownerDocument
             if (openedMap.has($document)) 
                 {
                     hide(openedMap.get($document))
@@ -477,6 +496,8 @@ setImmediate || (setImmediate = setTimeout)
         }
 
     }
+
+
 
     function on($emitter, type, handler)
     {

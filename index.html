@@ -5,9 +5,6 @@
     <title>Select Plugin</title>
     <script src="require-module.js"></script>
     <script src="dom4.js"></script>
-    <script src="my-query.js"></script>
-    <script src="my-query-event.js"></script>
-    <script src="my-query-traversing.js"></script>
     <script src="selectPlugin.js"></script>
 
     <style>
@@ -15,11 +12,12 @@
         .hc-select-search{position: absolute; transform: rotateY(90deg);}
         .hc-select-wrapper select {position: relative;left: 300px;}
         .hc-select-current { border: 1px solid black;}
-        .hc-select-current.hc-select-focused {outline: 2px solid red;}
-        .hc-select-list {width: 100%;background-color: white;}
-        .hc-select-highlighted {background-color: red;}
-        .hc-select-list li[data-disabled], .hc-select-group[data-disabled] li {color: gray}
-        .hc-select-list li:not(.hc-select-group)[data-disabled]:hover, .hc-select-group[data-disabled] li:hover {background-color: white}
+        .hc-select-current.hc-select-focus {outline: 2px solid red;}
+        .hc-select-list {width: 100%; background-color: white; border: 2px solid black;}
+        .hc-select-hover {background-color: red;}
+        .hc-select-disabled, .hc-select-disabled * {color: gray}
+        .hc-select-current, .hc-select-list {min-width: 200px;}
+    
 
         .hc-select-list {
             list-style: none;
@@ -29,12 +27,15 @@
         }
 
         .hc-select-label {
+            margin: 0;
             font-weight: 700;
         }
 
         .hc-select-group li {
             padding-left: 10px;
         }
+
+        .hc-select-closed {display: none;}
 
     </style>
 </head>
@@ -72,23 +73,22 @@
     <button onclick="testC()">Clear Select</button>
     <script>
         var selectPlugin = require('selectplugin')
-        selectPlugin($$('select'), {})
-        window.onerror = function(e) {console.log(new Error().stack)}
+        selectPlugin([ ].slice.call(document.querySelectorAll('select')), {})
     </script>  
     <script>
 
         var i = 0;
         function testA() {
-            var a = $('<option>')
+            var a = document.createElement('option')
             a.textContent = 'Option ' + i
             test2.append(a)
             i++
         }
         function testB() {
-            var a = $('<optgroup>')
+            var a = document.createElement('optgroup')
             a.label = 'New Optgroup '+i
             a.id = i
-            var b = $('<option>')
+            var b = document.createElement('option')
             b.textContent = 'New Option '+i+'a'
             a.append(b)
             test2.append(a)
