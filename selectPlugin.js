@@ -17,6 +17,7 @@ if (typeof setImmediate == 'undefined')
 
         var optionMap = new WeakMap(/* <item, option> */)
         var itemMap = new WeakMap(/* <option, item> */)
+        var optgroupMap = new WeakMap(/* <optgroup, item> */)
         var validOptionsArray = []
         var $options = $select.options
 
@@ -113,7 +114,7 @@ if (typeof setImmediate == 'undefined')
         function highlight($element)
         {
             if ($element == null) return
-                
+
             $hover.classList.remove(CLASSES.HOVER)
             $hover = $element
             $hover.classList.add(CLASSES.HOVER)
@@ -146,14 +147,11 @@ if (typeof setImmediate == 'undefined')
                     $item.classList.add(CLASSES.OPTION)
 
                     if ($element.selected)
-                    {
                         setCurrent($item)
-                        // $hover = $item
-                    }
 
-                    if (!$element.disabled &&
-                        !$element.parentElement.disabled)
-                        validOptionsArray.push($item)
+                    if (!$element.disabled)
+                        if(!$element.parentElement.disabled)
+                            validOptionsArray.push($item)
 
                     optionMap.set($item, $element)
                     itemMap.set($element, $item)
@@ -166,6 +164,8 @@ if (typeof setImmediate == 'undefined')
 
                     $item.classList.add(CLASSES.GROUP)
                     $item.append($label)
+
+                    optgroupMap.set($element, $item)
 
                     adopt($element, $item, build)
             }
@@ -187,9 +187,9 @@ if (typeof setImmediate == 'undefined')
 
         // Assign handlers.
         // Open/close $list.
-        function toggleSelect(event)
+        function toggleSelect($target)
         {
-            var $document = event.target.ownerDocument
+            var $document = $target.ownerDocument
 
             if (openedMap.has($document)) 
             {
@@ -221,7 +221,6 @@ if (typeof setImmediate == 'undefined')
         // Set selected item as current.
         function setCurrent($item)
         {
-            // debugger
             $current.innerHTML = $item.innerHTML
             $hover = $item
 
@@ -261,10 +260,7 @@ if (typeof setImmediate == 'undefined')
 
             if ($target == $list) return
             if (valid($target)) 
-            {
-                $hover.classList.remove(CLASSES.HOVER)
-                $target.classList.add(CLASSES.HOVER)
-            }
+                highlight($target)
         })
 
         on($list, 'mouseout', function(event)
@@ -277,7 +273,7 @@ if (typeof setImmediate == 'undefined')
         // Focus on click.
         on($current, 'click', function(event)
         {
-            toggleSelect(event)
+            toggleSelect(event.target)
             $search.focus()
         })
 
@@ -294,11 +290,6 @@ if (typeof setImmediate == 'undefined')
         // Handle keyboard.
         on($wrapper, 'keydown', function(event)
         {
-            function enabled($element)
-            {
-                return !$element.disabled && !$element.parentElement.disabled
-            }
-
             // Highlight next valid sibling.
             function highlightNext() {
                 var $option = optionMap.get($hover)
@@ -327,6 +318,7 @@ if (typeof setImmediate == 'undefined')
                 highlight(itemMap.get($previous))
             }
 
+            var $target = event.target
             switch(event.which) 
                 {
                     case 9: // Tab
@@ -335,42 +327,27 @@ if (typeof setImmediate == 'undefined')
 
                     case 13: // Enter
                         if (!isHidden($list)) setCurrent($hover)
-                        else toggleSelect(event)
-
+                        else toggleSelect($target)
                         break
 
                     case 27: // Esc
-                        if (currentOpenedHCSelect)
-                        {
-                            $('.'+CLASSES.HOVER).classList.remove(CLASSES.HOVER)
-                            toggleSelect(event)
-                        }
-
+                        if (!isHidden($list))
+                            toggleSelect($target)
                         break
 
-                    case 38: // UpArrow
-                    case 37: // LeftArrow
+                    case 38: // Up Arrow
+                    case 37: // Left Arrow
                         highlightPrev()
-
                         break
 
-                    case 39: // RightArrow
-                    case 40: // DownArrow
+                    case 39: // Right Arrow
+                    case 40: // Down Arrow
                         highlightNext()
-
                         break
                 }
         })
 
         // OBSERVE MUTATIONS
-        var allOpts, allHCOpts
-        updateOptLists()
-
-        function updateOptLists() {
-            // allOpts = $$('option,optgroup'), 
-            // allHCOpts = $$('.'+CLASSES.LIST+' li')
-        }
-
         // Attach MutationObservers.
         var config =
         {
@@ -382,53 +359,65 @@ if (typeof setImmediate == 'undefined')
 
         var observer = new MutationObserver(function(mutations)
         {
+            function remove($node)
+            {
+                if ($node.nodeType != 1) return
+
+                switch($node.tagName.toLowerCase())
+                {
+                    case 'option':
+                        itemMap.get($node).remove()
+                        break
+                    case 'optgroup':
+                        optgroupMap.get($node).remove()
+                        break
+                }
+
+                $current.innerHTML = ($select.selectedOptions.length)
+                                    ? $select.selectedOptions[0].innerHTML
+                                    : ''
+            }
+
             // TODO
             mutations.forEach(function(mutation) 
             {
                 switch(mutation.type) 
                 {
                     case 'childList':
-                        if (mutation.removedNodes.length>0) {
+                        if (mutation.removedNodes.length) {
                             console.log('Removed:',mutation.removedNodes);
-                            [].forEach.call(mutation.removedNodes, function(node) 
-                            {
-                                if (node.nodeType==1) {
-                                    var index = allOpts.indexOf(node)
-                                    allHCOpts[index].remove()
-                                }
-                            })
+                            [].forEach.call(mutation.removedNodes, remove) 
                         }
-                        else if (mutation.addedNodes.length>0)
-                        {
-                            console.log('Added:', mutation);
-                            var previousSibling = mutation.previousSibling
-                            var position = (previousSibling.nodeType==3) ?
-                                            previousSibling.previousElementSibling :
-                                            previousSibling
-                            var HCposition
+                        // else if (mutation.addedNodes.length)
+                        // {
+                        //     console.log('Added:', mutation);
+                        //     var previousSibling = mutation.previousSibling
+                        //     var position = (previousSibling.nodeType==3) ?
+                        //                     previousSibling.previousElementSibling :
+                        //                     previousSibling
+                        //     var HCposition
 
-                            if (position) 
-                            {
-                                var index = allOpts.indexOf(position)
-                                HCposition = allHCOpts[index]
-                            } 
-                            else 
-                                position = $list;
+                        //     if (position) 
+                        //     {
+                        //         var index = allOpts.indexOf(position)
+                        //         HCposition = allHCOpts[index]
+                        //     } 
+                        //     else 
+                        //         position = $list;
 
-                            [].forEach.call(mutation.addedNodes, function(node)
-                            {
-                                var newNode = build(node)
+                        //     [].forEach.call(mutation.addedNodes, function(node)
+                        //     {
+                        //         var newNode = build(node)
 
-                                if (HCposition) 
-                                    HCposition.after(newNode)
-                                else
-                                {
-                                    position.append(newNode)
-                                    $current.textContent = validOptionsArray[0].textContent
-                                }
-                            })
-                        }
-                        updateOptLists()
+                        //         if (HCposition) 
+                        //             HCposition.after(newNode)
+                        //         else
+                        //         {
+                        //             position.append(newNode)
+                        //             $current.textContent = validOptionsArray[0].textContent
+                        //         }
+                        //     })
+                        // }
                         break
                 }
                 
@@ -487,5 +476,10 @@ if (typeof setImmediate == 'undefined')
     function unique(element, index, array)
     {
         return array.indexOf(element) == index
+    }
+
+    function enabled($element)
+    {
+        return !$element.disabled && !$element.parentElement.disabled
     }
 })()
