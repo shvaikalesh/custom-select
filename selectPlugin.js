@@ -1,11 +1,25 @@
-// setImmediate || (setImmediate = setTimeout)
+if (typeof setImmediate == 'undefined')
+    setImmediate = setTimeout
 
-(function() 
+!(function() 
 {
     'use strict'
 
-    module.exports = function(selects, settings)
+    var openedMap = new WeakMap(/* <document, div> */)
+    var selectSet = new WeakSet(/* <select>s */)
+    var documentSet = new WeakSet(/* <document>s */)
+
+    module.exports = function($select, settings)
     {
+        if (selectSet.has($select))
+            return
+        selectSet.add($select)
+
+        var optionMap = new WeakMap(/* <item, option> */)
+        var itemMap = new WeakMap(/* <option, item> */)
+        var validOptionsArray = []
+        var $options = $select.options
+
         Object.assign(settings || { },
         {
             namespace: 'hc',
@@ -71,6 +85,8 @@
 
         function hide($list) 
         {
+            if ($list == null) return
+
             $list.classList.add(CLASSES.CLOSED)
             $list.classList.remove(CLASSES.OPENED)
 
@@ -79,425 +95,366 @@
 
         function show($list)
         {
+            if ($list == null) return
+
             $list.classList.remove(CLASSES.CLOSED)
             $list.classList.add(CLASSES.OPENED)
 
             return $list
         }
 
-        var openedMap = new WeakMap(/* <document, div> */)
-        var optionMap = new WeakMap(/* <item, option> */)
-        var itemMap = new WeakMap(/* <option, item> */)
-
-        selects.forEach(function($select)
+        function append(/* arguments... */) 
         {
+            var $element = create.apply(this, arguments)
 
-            function append(/* arguments... */) 
+            return $wrapper.appendChild($element)
+        }
+
+        function highlight($element)
+        {
+            if ($element == null) return
+                
+            $hover.classList.remove(CLASSES.HOVER)
+            $hover = $element
+            $hover.classList.add(CLASSES.HOVER)
+        }
+
+
+
+
+        var $wrapper = create('wrapper')
+        append('before')
+        var $current = append('current')
+        append('after')
+        var $list = hide(append('ul', 'list'))
+        var $hover
+
+        $select.before($wrapper)
+        $select.tabIndex = -1
+
+        function build($element)
+        {
+            var $document = $element.ownerDocument
+
+            var $item = $document.createElement('li')
+                $item.className = $element.className
+
+            switch ($element.tagName.toLowerCase())
             {
-                var $element = create.apply(this, arguments)
+                case 'option':
+                    $item.innerHTML = settings.template($element)
+                    $item.classList.add(CLASSES.OPTION)
 
-                return $wrapper.appendChild($element)
+                    if ($element.selected)
+                    {
+                        setCurrent($item)
+                        // $hover = $item
+                    }
+
+                    if (!$element.disabled &&
+                        !$element.parentElement.disabled)
+                        validOptionsArray.push($item)
+
+                    optionMap.set($item, $element)
+                    itemMap.set($element, $item)
+
+                    break
+
+                case 'optgroup':
+                    var $label = create('h3', 'label')
+                        $label.textContent = $element.label
+
+                    $item.classList.add(CLASSES.GROUP)
+                    $item.append($label)
+
+                    adopt($element, $item, build)
             }
 
-            var $wrapper = create('wrapper')
-            var $before = append('before')
-            var $current = append('current')
-            var $after = append('after')
-            var $list = hide(append('ul', 'list'))
-            var $hover
+            if ($element.disabled)
+                $item.classList.add(CLASSES.DISABLED)
 
-            var validOptionsArray = []
+            return $item
+        }
 
-            $select.before($wrapper)
-            $select.tabIndex = -1
+        adopt($select, $list, build)
 
-            function build($element)
+        // Transfer select siblings.
+        $wrapper.append(after($select, settings.INVALID))
+
+        // Hidden input block.
+        var $search = append('input', 'search')
+            $search.type = 'search'
+
+        // Assign handlers.
+        // Open/close $list.
+        function toggleSelect(event)
+        {
+            var $document = event.target.ownerDocument
+
+            if (openedMap.has($document)) 
             {
-                var $document = $element.ownerDocument
+                var $opened = openedMap.get($document)
+                if ($opened != $list) hide($opened)
+            }
 
-                var $item = $document.createElement('li')
-                    $item.className = $element.className
+            if (isHidden($list))
+            {
+                var $option = $select.selectedOptions[0]
 
-                switch ($element.tagName.toLowerCase())
+                highlight(itemMap.get($option))
+                show($list)
+            } 
+            else hide($list)
+
+            openedMap.delete($document)
+            setImmediate(function()
+            {
+                openedMap.set($document, $list)
+            })
+        }
+
+        function isHidden($list)
+        {
+            return $list.classList.contains(CLASSES.CLOSED)
+        }
+
+        // Set selected item as current.
+        function setCurrent($item)
+        {
+            // debugger
+            $current.innerHTML = $item.innerHTML
+            $hover = $item
+
+            if (optionMap.has($item)) 
+            {   
+                // To handle possible equal option values
+                var $options = [].slice.call($select.options)
+                $select.selectedIndex = $options.indexOf(optionMap.get($item))
+                hide($list)
+            }   
+        }
+
+        // Check if target is valid
+        function valid($target)
+        {
+            if ($target.classList.contains(CLASSES.LABEL))
+                return
+
+            var $parent = $target.parentElement
+            if ($parent.classList.contains(CLASSES.DISABLED))
+                return false
+
+            return !$target.classList.contains(CLASSES.DISABLED)
+        }
+
+        // Handle events
+        on($list, 'click', function(event) 
+        {
+            var $target = event.target
+            if (valid($target)) setCurrent($target)
+            else $search.focus()
+        })
+
+        on($list, 'mouseover', function(event)
+        {
+            var $target = event.target
+
+            if ($target == $list) return
+            if (valid($target)) 
+            {
+                $hover.classList.remove(CLASSES.HOVER)
+                $target.classList.add(CLASSES.HOVER)
+            }
+        })
+
+        on($list, 'mouseout', function(event)
+        {   
+            var $target = event.target
+            if ($target != $hover) 
+                $target.classList.remove(CLASSES.HOVER)
+        })
+
+        // Focus on click.
+        on($current, 'click', function(event)
+        {
+            toggleSelect(event)
+            $search.focus()
+        })
+
+        // Handle select focus/blur.
+        on($search, 'focus', function(event) {
+            $current.classList.toggle(CLASSES.FOCUS)
+        })
+
+        on($search, 'blur', function(event)
+        {
+            $current.classList.toggle(CLASSES.FOCUS)
+        })
+
+        // Handle keyboard.
+        on($wrapper, 'keydown', function(event)
+        {
+            function enabled($element)
+            {
+                return !$element.disabled && !$element.parentElement.disabled
+            }
+
+            // Highlight next valid sibling.
+            function highlightNext() {
+                var $option = optionMap.get($hover)
+                var index = [].indexOf.call($options, $option) + 1
+                
+                for (var $next; $next = $options[index]; index++)
                 {
-                    case 'option':
-                        $item.innerHTML = settings.template($element)
-                        $item.classList.add(CLASSES.OPTION)
+                    if (enabled($options[index]))
+                        break
+                }
 
-                        if ($element.selected)
-                        {
-                            setCurrent($item)
-                            $hover = $item
-                        }
+                highlight(itemMap.get($next))
+            }
 
-                        if (!$element.disabled &&
-                            !$element.parentElement.disabled)
-                            validOptionsArray.push($item)
+            // Highlight prev valid sibling.
+            function highlightPrev() {
+                var $option = optionMap.get($hover)
+                var index = [].indexOf.call($options, $option) - 1
 
-                        optionMap.set($item, $element)
+                for (var $previous; $previous = $options[index]; index--)
+                {
+                    if (enabled($options[index]))
+                        break
+                }
+
+                highlight(itemMap.get($previous))
+            }
+
+            switch(event.which) 
+                {
+                    case 9: // Tab
+                        hide($list)
+                        break
+
+                    case 13: // Enter
+                        if (!isHidden($list)) setCurrent($hover)
+                        else toggleSelect(event)
 
                         break
 
-                    case 'optgroup':
-                        var $label = create('h3', 'label')
-                            $label.textContent = $element.label
-
-                        $item.classList.add(CLASSES.GROUP)
-                        $item.append($label)
-
-                        adopt($element, $item, build)
-                }
-
-                if ($element.disabled)
-                    $item.classList.add(CLASSES.DISABLED)
-
-                return $item
-            }
-
-            adopt($select, $list, build)
-
-            // Transfer select siblings.
-            $wrapper.append(after($select, settings.INVALID))
-
-            // Hidden input block.
-            var $search = append('input', 'search')
-                $search.type = 'search'
-
-            // Assign handlers.
-            // Open/close $wrapper.
-            function toggleSelect(event)
-            {
-                var $document = event.target.ownerDocument
-
-                if (openedMap.has($document)) {
-                    var $opened = openedMap.get($document)
-                    if ($opened != $list) hide($opened)
-                }
-
-                if (isHidden($list)) show($list)
-                else hide($list)
-
-                setTimeout(function() // setImmediate
-                {
-                    openedMap.set($document, $list)
-                })
-            }
-
-            
-
-            function isHidden($list)
-            {
-                return $list.classList.contains(CLASSES.CLOSED)
-            }
-
-            // Detect $list events.
-            // Helper - Filter unwanted <li>.
-
-            function setCurrent($item)
-            {
-                $current.innerHTML = $item.innerHTML
-
-                if (optionMap.has($item)) 
-                {
-                    $select.value = optionMap.get($item).value
-                    hide($list)
-                }
-            }
-
-            function wanted($target)
-            {
-                var $parent = $target.parentElement
-                
-                if ($parent && $parent.classList.contains(CLASSES.DISABLED))
-                    return false
-
-                return !$target.classList.contains(CLASSES.DISABLED)
-            }
-
-            on($list, 'click', function(event) 
-            {
-                var $target = event.target
-                if ($target.matches(CLASSES.OPTION)) setCurrent($target)
-                else $search.focus()
-            })
-
-            on($list, 'mouseover', function(event)
-            {
-                var $target = event.target
-                
-                if ($target == $list || $target == $hover) return
-                if (wanted($target)) 
-                {
-                    $hover.classList.remove(CLASSES.HOVER)
-                    $target.classList.add(CLASSES.HOVER)
-                    $hover = $target
-                }
-            })
-
-            on($list, 'mouseout', function(event)
-            {
-                var $target = event.target
-                    $target.classList.remove(CLASSES.HOVER)
-            })
-
-            // Focus on click.
-            on($current, 'click', function(event)
-            {
-                toggleSelect(event)
-                $search.focus()
-            })
-
-            // Handle select focus/blur.
-            on($search, 'focus', function(event) {
-                $current.classList.toggle(CLASSES.FOCUS)
-                validOptionsArray[$select.selectedIndex].classList.add(CLASSES.HOVER);
-            })
-
-            on($search, 'blur', function(event)
-            {
-                var selected = $list.query('.'+CLASSES.HOVER)
-                if (selected)
-                    selected.classList.remove(CLASSES.HOVER)
-                $current.classList.toggle(CLASSES.FOCUS)
-            })
-
-            // Handle keyboard.
-            on($wrapper, 'keydown', function(event)
-            {
-                // Highlight next valid sibling.
-                function highlightNext($element) {
-                    var highlighted = $element.query('.'+CLASSES.HOVER)
-                    var next
-
-                    if ($element.contains(highlighted)) {
-                        next = getNextValidLi(highlighted)
-                        if (next) {
-                            highlighted.classList.toggle(CLASSES.HOVER)
-                            next.classList.toggle(CLASSES.HOVER)
-                        }
-                        else return
-                    }
-                    else {
-                        next = getNextValidLi($element)
-                        if (next)
-                            next.classList.toggle(CLASSES.HOVER)
-                    }
-
-                }
-
-                // Helper for highlightNext().
-                function getNextValidLi(current) {
-                    var next = current.firstElementChild ||
-                               current.nextElementSibling ||
-                               current.parentElement.nextElementSibling
-                    if (next == $select) return
-
-                    if (next && (next.dataset.hasOwnProperty('disabled') || 
-                        next.parentElement.dataset.hasOwnProperty('disabled') ||
-                        next.tagName != 'LI' || 
-                        next.classList.contains(CLASSES.GROUP))) 
-                    {
-                            next = getNextValidLi(next)
-                    }
-                    return next
-                }
-
-                // Highlight prev valid sibling.
-                function highlightPrev($element) {
-                    var highlighted = $element.query('.'+CLASSES.HOVER)
-                    var prev
-
-                    if ($element.contains(highlighted)) {
-                        prev = getPrevValidLi(highlighted)
-                        if (prev) {
-                            highlighted.classList.remove(CLASSES.HOVER)
-                            prev.classList.add(CLASSES.HOVER)
-                        }
-                        else return
-                    }
-                    else {
-                        prev = getPrevValidLi($element)
-                        if (prev)
-                            prev.classList.toggle(CLASSES.HOVER)
-                    }
-                }
-
-                // Helper for highlightPrev().
-                function getPrevValidLi(current) {
-                    if (current == current.parentElement.firstElementChild &&
-                        current.parentElement == $list) return
-
-                    var prev = current.lastElementChild ||
-                               current.previousElementSibling ||
-                               current.parentElement.previousElementSibling
-
-                    if (prev && (prev.dataset.hasOwnProperty('disabled') || 
-                        prev.parentElement.dataset.hasOwnProperty('disabled') ||
-                        prev.tagName != 'LI' ||
-                        prev.classList.contains(CLASSES.group))) 
-                    {
-                            prev = getPrevValidLi(prev)
-                    }
-                    return prev
-                }
-
-                function updateHC() {
-                    var h = $list.query('.'+CLASSES.HOVER)
-                    $current.textContent = h.textContent
-                    $select.selectedIndex = validOptionsArray.indexOf(h)                    
-                }
-
-                var openedSelect
-                if (openedSelect = $wrapper.query('.'+CLASSES.FOCUS)) 
-                {
-                    switch(event.which) 
-                    {
-                        case 9: // Tab
-                            hide(openedSelect.parentElement.query('.'+CLASSES.LIST))
-                            updateHC()
-
-                            break
-
-                        case 13: // Enter
-                            var highlighted = $list.query('.'+CLASSES.HOVER)
-                            if (highlighted) 
-                            {
-                                $select.selectedIndex = validOptionsArray.indexOf(highlighted)
-                                $current.textContent = highlighted.textContent
-                            }
+                    case 27: // Esc
+                        if (currentOpenedHCSelect)
+                        {
+                            $('.'+CLASSES.HOVER).classList.remove(CLASSES.HOVER)
                             toggleSelect(event)
+                        }
 
-                            break
+                        break
 
-                        case 27: // Esc
-                            if (currentOpenedHCSelect)
-                            {
-                                $('.'+CLASSES.HOVER).classList.remove(CLASSES.HOVER)
-                                toggleSelect(event)
-                            }
+                    case 38: // UpArrow
+                    case 37: // LeftArrow
+                        highlightPrev()
 
-                            break
+                        break
 
-                        case 38: // UpArrow
-                        case 37: // LeftArrow
-                            highlightPrev($list)
-                            updateHC()
+                    case 39: // RightArrow
+                    case 40: // DownArrow
+                        highlightNext()
 
-                            break
-
-                        case 39: // RightArrow
-                        case 40: // DownArrow
-                            highlightNext($list)
-                            updateHC()
-
-                            break
-                    }
+                        break
                 }
-            })
-
-            // OBSERVE MUTATIONS
-            var allOpts, allHCOpts
-            updateOptLists()
-
-            function updateOptLists() {
-                // allOpts = $$('option,optgroup'), 
-                // allHCOpts = $$('.'+CLASSES.LIST+' li')
-            }
-
-            // Attach MutationObservers.
-            var config =
-            {
-                attributes: true,
-                childList: true,
-                characterData: true,
-                subtree: true
-            }
-
-            var observer = new MutationObserver(function(mutations)
-            {
-                // TODO
-                mutations.forEach(function(mutation) 
-                {
-                    switch(mutation.type) 
-                    {
-                        case 'childList':
-                            if (mutation.removedNodes.length>0) {
-                                console.log('Removed:',mutation.removedNodes);
-                                [].forEach.call(mutation.removedNodes, function(node) 
-                                {
-                                    if (node.nodeType==1) {
-                                        var index = allOpts.indexOf(node)
-                                        allHCOpts[index].remove()
-                                    }
-                                })
-                            }
-                            else if (mutation.addedNodes.length>0)
-                            {
-                                console.log('Added:', mutation);
-                                var previousSibling = mutation.previousSibling
-                                var position = (previousSibling.nodeType==3) ?
-                                                previousSibling.previousElementSibling :
-                                                previousSibling
-                                var HCposition
-
-                                if (position) 
-                                {
-                                    var index = allOpts.indexOf(position)
-                                    HCposition = allHCOpts[index]
-                                } 
-                                else 
-                                    position = $list;
-
-                                [].forEach.call(mutation.addedNodes, function(node)
-                                {
-                                    var newNode = build(node)
-
-                                    if (HCposition) 
-                                        HCposition.after(newNode)
-                                    else
-                                    {
-                                        position.append(newNode)
-                                        $current.textContent = validOptionsArray[0].textContent
-                                    }
-                                })
-                            }
-                            updateOptLists()
-                            break
-                    }
-                    
-                })
-            })
-
-            observer.observe($select, config)
         })
+
+        // OBSERVE MUTATIONS
+        var allOpts, allHCOpts
+        updateOptLists()
+
+        function updateOptLists() {
+            // allOpts = $$('option,optgroup'), 
+            // allHCOpts = $$('.'+CLASSES.LIST+' li')
+        }
+
+        // Attach MutationObservers.
+        var config =
+        {
+            attributes: true,
+            childList: true,
+            characterData: true,
+            subtree: true
+        }
+
+        var observer = new MutationObserver(function(mutations)
+        {
+            // TODO
+            mutations.forEach(function(mutation) 
+            {
+                switch(mutation.type) 
+                {
+                    case 'childList':
+                        if (mutation.removedNodes.length>0) {
+                            console.log('Removed:',mutation.removedNodes);
+                            [].forEach.call(mutation.removedNodes, function(node) 
+                            {
+                                if (node.nodeType==1) {
+                                    var index = allOpts.indexOf(node)
+                                    allHCOpts[index].remove()
+                                }
+                            })
+                        }
+                        else if (mutation.addedNodes.length>0)
+                        {
+                            console.log('Added:', mutation);
+                            var previousSibling = mutation.previousSibling
+                            var position = (previousSibling.nodeType==3) ?
+                                            previousSibling.previousElementSibling :
+                                            previousSibling
+                            var HCposition
+
+                            if (position) 
+                            {
+                                var index = allOpts.indexOf(position)
+                                HCposition = allHCOpts[index]
+                            } 
+                            else 
+                                position = $list;
+
+                            [].forEach.call(mutation.addedNodes, function(node)
+                            {
+                                var newNode = build(node)
+
+                                if (HCposition) 
+                                    HCposition.after(newNode)
+                                else
+                                {
+                                    position.append(newNode)
+                                    $current.textContent = validOptionsArray[0].textContent
+                                }
+                            })
+                        }
+                        updateOptLists()
+                        break
+                }
+                
+            })
+        })
+
+        observer.observe($select, config)
 
 
         
         // Add document click handlers
-        selects
-        .map(function($select)
+        var $document = $select.ownerDocument
+        if (!documentSet.has($document))
         {
-            return $select.ownerDocument
-        })
-        .filter(unique)
-        .forEach(function($document)
-        {
+            documentSet.add($document)
             on($document, 'click', hideOpened)
-        })
+        }
 
         function hideOpened(event)
         {
             var $document = event.target.ownerDocument
-            if (openedMap.has($document)) 
-                {
-                    hide(openedMap.get($document))
-                    openedMap.delete($document)
-                }
+
+            hide(openedMap.get($document))
         }
 
     }
-
-
 
     function on($emitter, type, handler)
     {

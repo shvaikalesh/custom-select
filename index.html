@@ -57,14 +57,14 @@
         </optgroup>
         <option value="2.5">Option 2.5</option> 
         <optgroup label="Group B" disabled>
-                <option value="3">Option 3</option>
-                <option value="4">Option 4</option>
+            <option value="3">Option 3</option>
+            <option value="4">Option 4</option>
             <option value="5">Option 5</option>
         </optgroup>
         <optgroup label="Group C">
-            <option value="3" id=opt2>Option 3</option>
-            <option value="4">Option 4</option>
-            <option value="5">Option 5</option>
+            <option value="3" id=opt2>Option 6</option>
+            <option value="4">Option 7</option>
+            <option value="5">Option 8</option>
         </optgroup>
     </select>
     <br><br>
@@ -72,8 +72,13 @@
     <button onclick="testB()">Add OptGroup</button>
     <button onclick="testC()">Clear Select</button>
     <script>
-        var selectPlugin = require('selectplugin')
-        selectPlugin([ ].slice.call(document.querySelectorAll('select')), {})
+        var selectPlugin = require('selectplugin');
+        [ ].slice
+        .call(document.querySelectorAll('select'))
+        .forEach(function($select)
+        {
+            selectPlugin($select, {})
+        })
     </script>  
     <script>
 
