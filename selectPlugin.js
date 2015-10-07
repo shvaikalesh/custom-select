@@ -18,7 +18,6 @@ if (typeof setImmediate == 'undefined')
         var optionMap = new WeakMap(/* <item, option> */)
         var itemMap = new WeakMap(/* <option, item> */)
         var optgroupMap = new WeakMap(/* <optgroup, item> */)
-        var validOptionsArray = []
         var $options = $select.options
 
         Object.assign(settings || { },
@@ -148,10 +147,6 @@ if (typeof setImmediate == 'undefined')
 
                     if ($element.selected)
                         setCurrent($item)
-
-                    if (!$element.disabled)
-                        if(!$element.parentElement.disabled)
-                            validOptionsArray.push($item)
 
                     optionMap.set($item, $element)
                     itemMap.set($element, $item)
@@ -384,40 +379,20 @@ if (typeof setImmediate == 'undefined')
                 switch(mutation.type) 
                 {
                     case 'childList':
-                        if (mutation.removedNodes.length) {
+                        if (mutation.removedNodes.length) 
+                        {
                             console.log('Removed:',mutation.removedNodes);
                             [].forEach.call(mutation.removedNodes, remove) 
                         }
-                        // else if (mutation.addedNodes.length)
-                        // {
-                        //     console.log('Added:', mutation);
-                        //     var previousSibling = mutation.previousSibling
-                        //     var position = (previousSibling.nodeType==3) ?
-                        //                     previousSibling.previousElementSibling :
-                        //                     previousSibling
-                        //     var HCposition
-
-                        //     if (position) 
-                        //     {
-                        //         var index = allOpts.indexOf(position)
-                        //         HCposition = allHCOpts[index]
-                        //     } 
-                        //     else 
-                        //         position = $list;
-
-                        //     [].forEach.call(mutation.addedNodes, function(node)
-                        //     {
-                        //         var newNode = build(node)
-
-                        //         if (HCposition) 
-                        //             HCposition.after(newNode)
-                        //         else
-                        //         {
-                        //             position.append(newNode)
-                        //             $current.textContent = validOptionsArray[0].textContent
-                        //         }
-                        //     })
-                        // }
+                        else if (mutation.addedNodes.length)
+                        {
+                            console.log(mutation)
+                            console.log('Added:',mutation.addedNodes);
+                            [].forEach.call(mutation.addedNodes, function($node)
+                            {
+                                var item = build($node)
+                            })
+                        }
                         break
                 }
                 
