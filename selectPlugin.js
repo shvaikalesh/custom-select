@@ -44,6 +44,7 @@ if (typeof setImmediate == 'undefined')
             , 'disabled'
             , 'closed'
             , 'opened'
+            , 'up'
 
             , 'wrapper'
             , 'before'
@@ -133,6 +134,7 @@ if (typeof setImmediate == 'undefined')
 
 
 
+
         var $wrapper = create('wrapper')
         append('before')
         var $current = append('current')
@@ -215,17 +217,16 @@ if (typeof setImmediate == 'undefined')
                 if (settings.viewportHandling)
                 {
                     var size = $list.getBoundingClientRect()
-                    var height = window.innerHeight
+                    var height = $document.documentElement.clientHeight
+                    var bottom = size.bottom
 
-                    if (size.bottom > height) 
-                    {
-                        if (size.bottom + size.height > height)
-                        {
-                            var offset = size.height
-                            $list.style.setProperty('top', -offset + 'px')
-                        }
-                    }
-                    
+                    if ($list.classList.contains(CLASSES.UP))
+                        bottom += size.height
+
+                    if (bottom > height) 
+                        $list.classList.add(CLASSES.UP)
+                    else
+                        $list.classList.remove(CLASSES.UP)
                 }
                 
             } 
@@ -256,8 +257,7 @@ if (typeof setImmediate == 'undefined')
         // Check if target is valid
         function valid($target)
         {
-            if ($target.tagName.toLowerCase() != 'li')
-                return
+            if (!$target.matches('li')) return
 
             var $parent = $target.parentElement
             if ($parent.classList.contains(CLASSES.DISABLED))
@@ -303,12 +303,12 @@ if (typeof setImmediate == 'undefined')
 
         // Handle select focus/blur.
         on($search, 'focus', function(event) {
-            $current.classList.toggle(CLASSES.FOCUS)
+            $current.classList.add(CLASSES.FOCUS)
         })
 
         on($search, 'blur', function(event)
         {
-            $current.classList.toggle(CLASSES.FOCUS)
+            $current.classList.remove(CLASSES.FOCUS)
         })
 
 
@@ -381,25 +381,20 @@ if (typeof setImmediate == 'undefined')
             if (timeout) clearTimeout(timeout)
 
             var searchString = $search.value
-            var regex = new RegExp('^' + searchString, 'i')
 
-            timeout = setTimeout(function() {
-                $search.value = ''
-            }, settings.inputDelay)
-
-            ;[].some.call($options, function($option)
+            timeout = setTimeout(function() 
             {
-                if ($option.text.match(regex)) 
-                {   
-                    if (enabled($option))
-                    {
-                        highlight(itemMap.get($option))
-                        return true
-                    }
-                }
+                $search.value = ''
+            },
+            settings.inputDelay)
 
+            var $item = [].find.call($options, function($option)
+            {
+                return enabled($option)
+                    && $option.textContent.startsWith(searchString)
             })
 
+            highlight(itemMap.get($item))
         })
         
         // Add document click handlers
@@ -475,9 +470,6 @@ if (typeof setImmediate == 'undefined')
         })
 
         observer.observe($select, config)
-
-        window.opt = $options
-
     }
 
     function on($emitter, type, handler)
@@ -515,6 +507,6 @@ if (typeof setImmediate == 'undefined')
 
     function enabled($element)
     {
-        return !$element.disabled && !$element.parentElement.disabled
+        return !$element.closest('[disabled]')
     }
 })()
