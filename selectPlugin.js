@@ -20,7 +20,7 @@ if (typeof setImmediate == 'undefined')
         var optgroupMap = new WeakMap(/* <optgroup, item> */)
         var $options = $select.options
 
-        Object.assign(settings || { },
+        var settings = Object.assign(
         {
             namespace: 'hc',
             control: 'select',
@@ -32,7 +32,7 @@ if (typeof setImmediate == 'undefined')
             },
             viewportHandling: true,
             inputDelay: 1000
-        })
+        }, settings || { })
 
         var CLASSES =
         [
@@ -464,12 +464,9 @@ if (typeof setImmediate == 'undefined')
                         }
                         else if (mutation.addedNodes.length)
                         {
-                            console.log(mutation)
-                            console.log('Added:',mutation.addedNodes);
-                            [].forEach.call(mutation.addedNodes, function($node)
-                            {
-                                var item = build($node)
-                            })
+                            // Brutal way
+                            $list.innerHTML = ''
+                            adopt(mutation.target, $list, build)
                         }
                         break
                 }
@@ -478,6 +475,8 @@ if (typeof setImmediate == 'undefined')
         })
 
         observer.observe($select, config)
+
+        window.opt = $options
 
     }
 
