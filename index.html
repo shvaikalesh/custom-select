@@ -8,46 +8,49 @@
     <script src="selectPlugin.js"></script>
 
     <style>
-        .hc-select-wrapper {position: relative; display: inline-block;}
-        .hc-select-search{position: absolute; transform: rotateY(90deg);}
-        .hc-select-wrapper select {position: relative;left: 300px;}
-        .hc-select-current { border: 1px solid black;}
-        .hc-select-current.hc-select-focus {outline: 2px solid red;}
-        .hc-select-list {width: 100%; background-color: white; border: 2px solid black;}
-        .hc-select-hover {background-color: red;}
-        .hc-select-disabled, .hc-select-disabled * {color: gray}
-        .hc-select-current, .hc-select-list {min-width: 200px;}
-    
+        .hc-select-wrapper {position: relative; display: inline-block; min-width: 200px;}
+        .hc-select-wrapper input {position: absolute; transform: rotateY(90deg); left: 300px;}
+        .hc-select-wrapper select {/*position: relative;left: 300px;*/display: none;}
+        .hc-select-wrapper .hc-select-current { border: 1px solid gray; padding-left: 2px; min-height: 20px}
+        .hc-select-wrapper .hc-select-focus {outline: 2px solid #79C5F1;}
+        .hc-select-wrapper .hc-select-hover {background-color: #79C5F1;}
+        .hc-select-wrapper .hc-select-disabled, .hc-select-wrapper .hc-select-disabled * {color: gray}
+        .hc-select-wrapper .hc-select-option {padding-left: 2px; min-height: 20px}
+        .hc-select-wrapper .hc-select-group {padding-left: 2px;}
+        .hc-select-wrapper .hc-select-group li {padding-left: 10px;}
+        .hc-select-wrapper .hc-select-closed {display: none;}
 
-        .hc-select-list {
+        .hc-select-wrapper .hc-select-list {
+            width: 100%; 
+            background-color: white; 
+            border: 1px solid #79C5F1;
             list-style: none;
             margin: 0;
             padding: 0;
             position: absolute;
+            box-sizing: border-box;
         }
 
-        .hc-select-label {
+        .hc-select-wrapper .hc-select-label {
             margin: 0;
             font-weight: 700;
         }
+        select:invalid + label {color: red;}
 
-        .hc-select-group li {
-            padding-left: 10px;
-        }
-
-        .hc-select-closed {display: none;}
 
     </style>
 </head>
 <body>
     <p>Usual select</p>
-    <select name="test" id=test data-id="1" style="vertical-align: top">
-        <option value="1" >Option 1</option>
-        <option value="2" disabled>Option 2 - Disabled</option>
-        <option value="3">Option 3</option>
-        <option value="4">Option 4</option>
+    <select name="test" id=test data-id="1" style="vertical-align: top" required>
+        <option value=""></option>
+        <option value="1" >Array</option>
+        <option value="2" disabled>Disabled</option>
+        <option value="3">Argument</option>
+        <option value="4">Number</option>
         <option value="5" disabled>Option 5 - Disabled</option>
     </select>
+    <label for="test">Label</label>
     <br><br><br><br><br><br>
     <p>With optgroup</p>
     <select name="test2" id=test2 data-id="2" style="vertical-align: top">

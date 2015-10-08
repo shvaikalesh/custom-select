@@ -29,7 +29,9 @@ if (typeof setImmediate == 'undefined')
             template: function($option)
             {
                 return $option.textContent
-            }
+            },
+            viewportHandling: true,
+            inputDelay: 1000
         })
 
         var CLASSES =
@@ -119,6 +121,15 @@ if (typeof setImmediate == 'undefined')
             $hover.classList.add(CLASSES.HOVER)
         }
 
+        function preventClick()
+        {
+            openedMap.delete($document)
+            setImmediate(function()
+            {
+                openedMap.set($document, $list)
+            })
+        }
+
 
 
 
@@ -174,7 +185,8 @@ if (typeof setImmediate == 'undefined')
         adopt($select, $list, build)
 
         // Transfer select siblings.
-        $wrapper.append(after($select, settings.INVALID))
+        $wrapper.append(after($select, settings.invalid))
+        $list.after($select)
 
         // Hidden input block.
         var $search = append('input', 'search')
@@ -198,14 +210,27 @@ if (typeof setImmediate == 'undefined')
 
                 highlight(itemMap.get($option))
                 show($list)
+
+                // Viewport handling
+                if (settings.viewportHandling)
+                {
+                    var size = $list.getBoundingClientRect()
+                    var height = window.innerHeight
+
+                    if (size.bottom > height) 
+                    {
+                        if (size.bottom + size.height > height)
+                        {
+                            var offset = size.height
+                            $list.style.setProperty('top', -offset + 'px')
+                        }
+                    }
+                    
+                }
+                
             } 
             else hide($list)
-
-            openedMap.delete($document)
-            setImmediate(function()
-            {
-                openedMap.set($document, $list)
-            })
+            preventClick()
         }
 
         function isHidden($list)
@@ -231,12 +256,12 @@ if (typeof setImmediate == 'undefined')
         // Check if target is valid
         function valid($target)
         {
-            if ($target.classList.contains(CLASSES.LABEL))
+            if ($target.tagName.toLowerCase() != 'li')
                 return
 
             var $parent = $target.parentElement
             if ($parent.classList.contains(CLASSES.DISABLED))
-                return false
+                return
 
             return !$target.classList.contains(CLASSES.DISABLED)
         }
@@ -246,7 +271,11 @@ if (typeof setImmediate == 'undefined')
         {
             var $target = event.target
             if (valid($target)) setCurrent($target)
-            else $search.focus()
+            else 
+            {
+                preventClick()
+                $search.focus()
+            }
         })
 
         on($list, 'mouseover', function(event)
@@ -282,36 +311,39 @@ if (typeof setImmediate == 'undefined')
             $current.classList.toggle(CLASSES.FOCUS)
         })
 
+
+        // Highlight next valid sibling.
+        function highlightNext() {
+            var $option = optionMap.get($hover)
+            var index = [].indexOf.call($options, $option) + 1
+            
+            for (var $next; $next = $options[index]; index++)
+            {
+                if (enabled($options[index]))
+                    break
+            }
+
+            highlight(itemMap.get($next))
+        }
+
+        // Highlight prev valid sibling.
+        function highlightPrev() {
+            var $option = optionMap.get($hover)
+            var index = [].indexOf.call($options, $option) - 1
+
+            for (var $previous; $previous = $options[index]; index--)
+            {
+                if (enabled($options[index]))
+                    break
+            }
+
+            highlight(itemMap.get($previous))
+        }
+
         // Handle keyboard.
         on($wrapper, 'keydown', function(event)
         {
-            // Highlight next valid sibling.
-            function highlightNext() {
-                var $option = optionMap.get($hover)
-                var index = [].indexOf.call($options, $option) + 1
-                
-                for (var $next; $next = $options[index]; index++)
-                {
-                    if (enabled($options[index]))
-                        break
-                }
-
-                highlight(itemMap.get($next))
-            }
-
-            // Highlight prev valid sibling.
-            function highlightPrev() {
-                var $option = optionMap.get($hover)
-                var index = [].indexOf.call($options, $option) - 1
-
-                for (var $previous; $previous = $options[index]; index--)
-                {
-                    if (enabled($options[index]))
-                        break
-                }
-
-                highlight(itemMap.get($previous))
-            }
+            
 
             var $target = event.target
             switch(event.which) 
@@ -341,6 +373,52 @@ if (typeof setImmediate == 'undefined')
                         break
                 }
         })
+
+        // Handle search.
+        var timeout
+        on($search, 'input', function(event)
+        {
+            if (timeout) clearTimeout(timeout)
+
+            var searchString = $search.value
+            var regex = new RegExp('^' + searchString, 'i')
+
+            timeout = setTimeout(function() {
+                $search.value = ''
+            }, settings.inputDelay)
+
+            ;[].some.call($options, function($option)
+            {
+                if ($option.text.match(regex)) 
+                {   
+                    if (enabled($option))
+                    {
+                        highlight(itemMap.get($option))
+                        return true
+                    }
+                }
+
+            })
+
+        })
+        
+        // Add document click handlers
+        var $document = $select.ownerDocument
+        if (!documentSet.has($document))
+        {
+            documentSet.add($document)
+            on($document, 'click', hideOpened)
+        }
+
+        function hideOpened(event)
+        {
+            var $document = event.target.ownerDocument
+
+            hide(openedMap.get($document))
+        }
+
+
+
 
         // OBSERVE MUTATIONS
         // Attach MutationObservers.
@@ -401,23 +479,6 @@ if (typeof setImmediate == 'undefined')
 
         observer.observe($select, config)
 
-
-        
-        // Add document click handlers
-        var $document = $select.ownerDocument
-        if (!documentSet.has($document))
-        {
-            documentSet.add($document)
-            on($document, 'click', hideOpened)
-        }
-
-        function hideOpened(event)
-        {
-            var $document = event.target.ownerDocument
-
-            hide(openedMap.get($document))
-        }
-
     }
 
     function on($emitter, type, handler)
@@ -443,7 +504,7 @@ if (typeof setImmediate == 'undefined')
 
         while ($sibling = $sibling.nextElementSibling)
             if ($sibling.matches(selector))
-                $fragment.append($sibling)
+                $fragment.appendChild($sibling)
 
         return $fragment
     }
