@@ -223,7 +223,7 @@ if (typeof setImmediate == 'undefined')
                     if ($list.classList.contains(CLASSES.UP))
                         bottom += size.height
 
-                    if (bottom > height) 
+                    if (bottom > height && height < size.top) 
                         $list.classList.add(CLASSES.UP)
                     else
                         $list.classList.remove(CLASSES.UP)
@@ -294,11 +294,26 @@ if (typeof setImmediate == 'undefined')
                 $target.classList.remove(CLASSES.HOVER)
         })
 
+        // on($list, 'wheel', function(event) 
+        // {   
+        //     var delta = event.wheelDelta || (event.detail * -40)
+        //     if (delta) 
+        //     {
+        //         if ((!this.scrollTop && delta > 0) ||
+        //             ( this.scrollTop + this.offsetHeight >= this.scrollHeight && delta < 0))
+        //             event.preventDefault();
+        //     }
+
+        // })
+
         // Focus on click.
         on($current, 'click', function(event)
         {
-            toggleSelect(event.target)
-            $search.focus()
+            if (enabled($select))
+            {
+                toggleSelect(event.target)
+                $search.focus()
+            }
         })
 
         // Handle select focus/blur.
@@ -446,26 +461,111 @@ if (typeof setImmediate == 'undefined')
                                     : ''
             }
 
-            // TODO
-            mutations.forEach(function(mutation) 
+            function toggle($element)
             {
+                if ($element == $wrapper)
+                    hide($list)
+
+                $element.classList.toggle(CLASSES.DISABLED)
+            }
+
+            function getTarget($element)
+            {
+                var $target
+                switch($element.tagName.toLowerCase())
+                {
+                    case 'select':
+                        $target = $wrapper
+                        break
+                    case 'option':
+                        $target = itemMap.get($element)
+                        break
+                    case 'optgroup':
+                        $target = optgroupMap.get($element)
+                        break
+                }
+
+                return $target
+            }
+
+            function setAttribute($element, attribute)
+            {
+                if ($element.nodeType != 1) return
+
+                var $target = getTarget($element)
+
+                if (attribute == 'disabled') 
+                {
+                    toggle($target)
+                    return
+                }
+                else if (attribute == 'label')
+                {
+                    if ($element.matches('optgroup'))
+                        updateLabel($element, $target)
+                }
+                else
+                {
+                    var value = $element.getAttribute(attribute)
+                    $target.setAttribute(attribute, value)
+                }
+            }
+
+            function updateData($element)
+            {
+                var $target = getTarget($element)
+                $target.textContent = $element.textContent
+            }
+
+            function updateLabel($element, $target)
+            {
+                $target.firstElementChild.textContent = $element.label
+            }
+
+            // TODO
+            console.log(mutations)
+            mutations.forEach(function(mutation, index) 
+            {
+                var $target = mutation.target
                 switch(mutation.type) 
                 {
                     case 'childList':
                         if (mutation.removedNodes.length) 
                         {
-                            console.log('Removed:',mutation.removedNodes);
-                            [].forEach.call(mutation.removedNodes, remove) 
+                            // console.log('Removed:',mutation.removedNodes);
+                            [].forEach.call(mutation.removedNodes, function($node, nodeIndex)
+                            {
+                                // if (mutations[index+1] && 
+                                //   ~[].indexOf.call(mutations[index+1].addedNodes, $node))
+                                // {
+                                //     return
+                                // }
+                                remove($node)
+                            })
                         }
                         else if (mutation.addedNodes.length)
                         {
+                            [].forEach.call(mutation.addedNodes, function($node)
+                            {
+                                // TODO: HANDLE NODE MOVEMENT
+                                // if (itemMap.has($node) || optgroupMap.has($node))
+                                //     // TODO: Move old node
+                                // else
+                                    // TODO: Append new node
+                            })
                             // Brutal way
                             $list.innerHTML = ''
-                            adopt(mutation.target, $list, build)
+                            adopt($target, $list, build)
                         }
                         break
+                    case 'attributes':
+                        setAttribute($target, mutation.attributeName)
+                        break
+                    case 'characterData':
+                        if ($target.nodeType == 3)
+                            updateData($target.parentElement)
+                        break
                 }
-                
             })
         })
 
