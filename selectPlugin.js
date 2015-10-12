@@ -9,6 +9,9 @@ if (typeof setImmediate == 'undefined')
     var selectSet = new WeakSet(/* <select>s */)
     var documentSet = new WeakSet(/* <document>s */)
 
+    var tempFragment = new DocumentFragment()
+    var tempOptMap = new WeakMap()
+
     module.exports = function($select, settings)
     {
         if (selectSet.has($select))
@@ -131,6 +134,17 @@ if (typeof setImmediate == 'undefined')
             })
         }
 
+        function updateWeakMaps($node, $item)
+        {
+            if ($node.matches('option'))
+            {
+                itemMap.set($node, $item)
+                optionMap.set($item, $node)
+            }
+            else if ($node.matches('optgroup'))
+                optgroupMap.set($node, $item)
+        }
+
 
 
 
@@ -161,8 +175,8 @@ if (typeof setImmediate == 'undefined')
                     if ($element.selected)
                         setCurrent($item)
 
-                    optionMap.set($item, $element)
-                    itemMap.set($element, $item)
+                    // optionMap.set($item, $element)
+                    // itemMap.set($element, $item)
 
                     break
 
@@ -173,10 +187,12 @@ if (typeof setImmediate == 'undefined')
                     $item.classList.add(CLASSES.GROUP)
                     $item.append($label)
 
-                    optgroupMap.set($element, $item)
+                    // optgroupMap.set($element, $item)
 
                     adopt($element, $item, build)
             }
+
+            updateWeakMaps($element, $item)
 
             if ($element.disabled)
                 $item.classList.add(CLASSES.DISABLED)
@@ -431,7 +447,6 @@ if (typeof setImmediate == 'undefined')
 
 
         // OBSERVE MUTATIONS
-        // Attach MutationObservers.
         var config =
         {
             attributes: true,
@@ -442,24 +457,6 @@ if (typeof setImmediate == 'undefined')
 
         var observer = new MutationObserver(function(mutations)
         {
-            function remove($node)
-            {
-                if ($node.nodeType != 1) return
-
-                switch($node.tagName.toLowerCase())
-                {
-                    case 'option':
-                        itemMap.get($node).remove()
-                        break
-                    case 'optgroup':
-                        optgroupMap.get($node).remove()
-                        break
-                }
-
-                $current.innerHTML = ($select.selectedOptions.length)
-                                    ? $select.selectedOptions[0].innerHTML
-                                    : ''
-            }
 
             function toggle($element)
             {
@@ -471,6 +468,8 @@ if (typeof setImmediate == 'undefined')
 
             function getTarget($element)
             {
+                if ($element.nodeType != 1) return
+
                 var $target
                 switch($element.tagName.toLowerCase())
                 {
@@ -522,8 +521,55 @@ if (typeof setImmediate == 'undefined')
                 $target.firstElementChild.textContent = $element.label
             }
 
+            function isCustom($node)
+            {
+                return itemMap.has($node) || optgroupMap.has($node)
+            }
+
+            function addNode($node)
+            {
+                var $item = tempOptMap.get($node) || build($node)
+                if ($item)
+                {
+                    var $sibling
+
+                    if ($sibling = $node.previousElementSibling)
+                    {
+                        if (isCustom($sibling))
+                            getTarget($sibling).after($item)
+                        else
+                        {
+                            $node.parentElement.matches('optgroup') ?
+                            getTarget($node.parentElement).prepend($item) :
+                            $list.prepend($item)
+                        }
+                    }
+                    else if ($sibling = $node.nextElementSibling)
+                    {
+                        if (isCustom($sibling))
+                            getTarget($sibling).before($item)
+                        else
+                        {
+                            $node.parentElement.matches('optgroup') ?
+                            getTarget($node.parentElement).append($item) :
+                            $list.append($item)
+                        }
+                    }
+                    else
+                    {
+                        if ($node.parentElement == $select)
+                            $list.append($item)
+                        else
+                            optgroupMap.get($node.parentElement).append($item)
+                    }
+
+                    updateWeakMaps($node, $item)
+                }
+            }
+
             // TODO
             console.log(mutations)
+
             mutations.forEach(function(mutation, index) 
             {
                 var $target = mutation.target
@@ -532,30 +578,27 @@ if (typeof setImmediate == 'undefined')
                     case 'childList':
                         if (mutation.removedNodes.length) 
                         {
-                            // console.log('Removed:',mutation.removedNodes);
-                            [].forEach.call(mutation.removedNodes, function($node, nodeIndex)
+                            [].forEach.call(mutation.removedNodes, function($node)
                             {
-                                // if (mutations[index+1] && 
-                                //   ~[].indexOf.call(mutations[index+1].addedNodes, $node))
-                                // {
-                                //     return
-                                // }
-                                remove($node)
+                                var $item = getTarget($node)
+                                if ($item) 
+                                {
+                                    tempFragment.appendChild($item)
+                                    tempOptMap.set($node, $item)
+                                }
                             })
+
+                            // Do I need it? Or garbage collector is ok?
+                            // setTimeout(function()
+                            // {
+                            //     tempFragment = new DocumentFragment()
+                            //     tempOptMap = new WeakMap()
+                            //     console.log('clear')
+                            // }, 5000)
                         }
-                        else if (mutation.addedNodes.length)
+                        if (mutation.addedNodes.length)
                         {
-                            [].forEach.call(mutation.addedNodes, function($node)
-                            {
-                                // TODO: HANDLE NODE MOVEMENT
-                                // if (itemMap.has($node) || optgroupMap.has($node))
-                                //     // TODO: Move old node
-                                // else
-                                    // TODO: Append new node
-                            })
-                            // Brutal way
-                            $list.innerHTML = ''
-                            adopt($target, $list, build)
+                            [].forEach.call(mutation.addedNodes, addNode)
                         }
                         break
                     case 'attributes':
