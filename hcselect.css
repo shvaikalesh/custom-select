@@ -1,0 +1,92 @@
+.hc-select-wrapper 
+{
+  position: relative; 
+  display: inline-block; 
+  width: 77px; 
+  height: 22px; 
+  border: 1px solid #b1b3bb; 
+  border-radius: 12px; 
+  font-size: 15px; 
+  color: #6f717c;
+}
+
+.hc-select-wrapper ~ * { vertical-align: top}
+
+.hc-select-wrapper input 
+{
+  position: absolute;
+  transform: rotateY(90deg); 
+}
+
+.hc-select-wrapper select 
+{
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hc-select-before, .hc-select-after 
+{
+  display: none;
+}
+
+.hc-select-current 
+{
+  box-sizing: border-box;  
+  padding-left: 2px; 
+  height: 100%; 
+  padding: 0 18px; 
+  font-weight: 700;
+  font-size: 16px;
+  line-height: 22px;
+}
+
+.hc-select-focus 
+{
+  outline: 2px solid #79C5F1;
+}
+
+.hc-select-hover 
+{
+  background-color: #79C5F1;
+}
+
+.hc-select-disabled
+{
+  color: #CCCCCC !important
+}
+
+.hc-select-option {
+  min-height: 20px
+}
+
+.hc-select-closed 
+{
+  display: none;
+}
+
+.hc-select-list {
+  width: 100%; 
+  background-color: #FFFFFF; 
+  border: 1px solid #79C5F1;
+  list-style: none;
+  margin: 0;
+  padding: 6px 10px;
+  position: absolute;
+  box-sizing: border-box;
+}
+
+.hc-select-label 
+{
+  margin: 0;
+}
+
+select:invalid + label 
+{
+  color: #F00;
+}
+
+.hc-select-up 
+{
+  transform: translateY(-100%);
+}

@@ -1,3 +1,33 @@
+// Polyfill for scrollIntoViewIfNeeded
+// from https://gist.github.com/hsablonniere/2581101
+if (!Element.prototype.scrollIntoViewIfNeeded) {
+  Element.prototype.scrollIntoViewIfNeeded = function (centerIfNeeded) {
+    centerIfNeeded = arguments.length === 0 ? true : !!centerIfNeeded;
+
+    var parent = this.parentNode,
+        parentComputedStyle = window.getComputedStyle(parent, null),
+        parentBorderTopWidth = parseInt(parentComputedStyle.getPropertyValue('border-top-width')),
+        parentBorderLeftWidth = parseInt(parentComputedStyle.getPropertyValue('border-left-width')),
+        overTop = this.offsetTop - parent.offsetTop < parent.scrollTop,
+        overBottom = (this.offsetTop - parent.offsetTop + this.clientHeight - parentBorderTopWidth) > (parent.scrollTop + parent.clientHeight),
+        overLeft = this.offsetLeft - parent.offsetLeft < parent.scrollLeft,
+        overRight = (this.offsetLeft - parent.offsetLeft + this.clientWidth - parentBorderLeftWidth) > (parent.scrollLeft + parent.clientWidth),
+        alignWithTop = overTop && !overBottom;
+
+    if ((overTop || overBottom) && centerIfNeeded) {
+      parent.scrollTop = this.offsetTop - parent.offsetTop - parent.clientHeight / 2 - parentBorderTopWidth + this.clientHeight / 2;
+    }
+
+    if ((overLeft || overRight) && centerIfNeeded) {
+      parent.scrollLeft = this.offsetLeft - parent.offsetLeft - parent.clientWidth / 2 - parentBorderLeftWidth + this.clientWidth / 2;
+    }
+
+    if ((overTop || overBottom || overLeft || overRight) && !centerIfNeeded) {
+      this.scrollIntoView(alignWithTop);
+    }
+  };
+}
+
 if (typeof setImmediate == 'undefined')
     setImmediate = setTimeout
 
@@ -71,10 +101,10 @@ if (typeof setImmediate == 'undefined')
                 tag = 'div'
             }
 
-            var element = document.createElement(tag)
-                element.className = CLASSES[name.toUpperCase()]
+            var $element = document.createElement(tag)
+                $element.className = CLASSES[name.toUpperCase()]
 
-            return element
+            return $element
         }
 
         function makeName(name)
@@ -145,6 +175,18 @@ if (typeof setImmediate == 'undefined')
                 optgroupMap.set($node, $item)
         }
 
+        function updateSelected()
+        {
+            var index = $select.selectedIndex
+            if (index > -1)
+            {
+                var $item = itemMap.get($options[$select.selectedIndex])
+                setCurrent($item)
+            }
+            else
+                $current.innerHTML = ''
+        }
+
 
 
 
@@ -175,9 +217,6 @@ if (typeof setImmediate == 'undefined')
                     if ($element.selected)
                         setCurrent($item)
 
-                    // optionMap.set($item, $element)
-                    // itemMap.set($element, $item)
-
                     break
 
                 case 'optgroup':
@@ -186,8 +225,6 @@ if (typeof setImmediate == 'undefined')
 
                     $item.classList.add(CLASSES.GROUP)
                     $item.append($label)
-
-                    // optgroupMap.set($element, $item)
 
                     adopt($element, $item, build)
             }
@@ -239,7 +276,7 @@ if (typeof setImmediate == 'undefined')
                     if ($list.classList.contains(CLASSES.UP))
                         bottom += size.height
 
-                    if (bottom > height && height < size.top) 
+                    if (bottom > height && size.height < size.top) 
                         $list.classList.add(CLASSES.UP)
                     else
                         $list.classList.remove(CLASSES.UP)
@@ -264,8 +301,8 @@ if (typeof setImmediate == 'undefined')
             if (optionMap.has($item)) 
             {   
                 // To handle possible equal option values
-                var $options = [].slice.call($select.options)
-                $select.selectedIndex = $options.indexOf(optionMap.get($item))
+                var $opts = [].slice.call($options)
+                $select.selectedIndex = $opts.indexOf(optionMap.get($item))
                 hide($list)
             }   
         }
@@ -310,17 +347,19 @@ if (typeof setImmediate == 'undefined')
                 $target.classList.remove(CLASSES.HOVER)
         })
 
-        // on($list, 'wheel', function(event) 
-        // {   
-        //     var delta = event.wheelDelta || (event.detail * -40)
-        //     if (delta) 
-        //     {
-        //         if ((!this.scrollTop && delta > 0) ||
-        //             ( this.scrollTop + this.offsetHeight >= this.scrollHeight && delta < 0))
-        //             event.preventDefault();
-        //     }
+        function normalizeScroll(event) 
+        {
+            var delta = event.wheelDelta || (event.detail * -40)
+            if (delta) 
+            {
+                if ((!this.scrollTop && delta > 0) ||
+                    ( this.scrollTop + this.offsetHeight >= this.scrollHeight && delta < 0))
+                    event.preventDefault();
+            }
+        }
 
-        // })
+        on($list, 'DOMMouseScroll', normalizeScroll)
+        on($list, 'wheel', normalizeScroll)
 
         // Focus on click.
         on($current, 'click', function(event)
@@ -340,6 +379,12 @@ if (typeof setImmediate == 'undefined')
         on($search, 'blur', function(event)
         {
             $current.classList.remove(CLASSES.FOCUS)
+        })
+
+        // This event should be dispatched by third-party
+        // code on $select to reflect direct changes of selectedIndex
+        on ($select, 'selectedIndexChanged', function() {
+            updateSelected()
         })
 
 
@@ -384,6 +429,8 @@ if (typeof setImmediate == 'undefined')
                         break
 
                     case 13: // Enter
+                    case 32: // Space
+                        event.preventDefault()
                         if (!isHidden($list)) setCurrent($hover)
                         else toggleSelect($target)
                         break
@@ -425,7 +472,14 @@ if (typeof setImmediate == 'undefined')
                     && $option.textContent.startsWith(searchString)
             })
 
-            highlight(itemMap.get($item))
+            $item = itemMap.get($item)
+
+            if ($item)
+            {
+                highlight($item)
+                $item.scrollIntoViewIfNeeded()
+            }
+            
         })
         
         // Add document click handlers
@@ -439,7 +493,6 @@ if (typeof setImmediate == 'undefined')
         function hideOpened(event)
         {
             var $document = event.target.ownerDocument
-
             hide(openedMap.get($document))
         }
 
@@ -539,9 +592,11 @@ if (typeof setImmediate == 'undefined')
                             getTarget($sibling).after($item)
                         else
                         {
-                            $node.parentElement.matches('optgroup') ?
-                            getTarget($node.parentElement).prepend($item) :
-                            $list.prepend($item)
+                            var $parent = $node.parentElement.matches('optgroup') ? $node.parentElement : $list
+                            if ($node.nextElementSibling)
+                                getTarget($node.nextElementSibling).before($item)
+                            else
+                                $parent.prepend($item)
                         }
                     }
                     else if ($sibling = $node.nextElementSibling)
@@ -550,9 +605,7 @@ if (typeof setImmediate == 'undefined')
                             getTarget($sibling).before($item)
                         else
                         {
-                            $node.parentElement.matches('optgroup') ?
-                            getTarget($node.parentElement).append($item) :
-                            $list.append($item)
+                            $node.parentElement.matches('optgroup') ? getTarget($node.parentElement).append($item) : $list.prepend($item)
                         }
                     }
                     else
@@ -568,7 +621,7 @@ if (typeof setImmediate == 'undefined')
             }
 
             // TODO
-            console.log(mutations)
+            // console.log(mutations)
 
             mutations.forEach(function(mutation, index) 
             {
@@ -587,6 +640,7 @@ if (typeof setImmediate == 'undefined')
                                     tempOptMap.set($node, $item)
                                 }
                             })
+
 
                             // Do I need it? Or garbage collector is ok?
                             // setTimeout(function()
@@ -610,6 +664,7 @@ if (typeof setImmediate == 'undefined')
                         break
                 }
             })
+            updateSelected()
         })
 
         observer.observe($select, config)

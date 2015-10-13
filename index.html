@@ -7,47 +7,25 @@
     <script src="dom4.js"></script>
     <script src="selectPlugin.js"></script>
 
-    <style>
-        .hc-select-wrapper {position: relative; display: inline-block; width: 77px; height: 22px; border: 1px solid #b1b3bb; border-radius: 12px; font-size: 15px; color: #6f717c;}
-        .hc-select-wrapper input {position: absolute; transform: rotateY(90deg); left: 300px;}
-        .hc-select-wrapper select {position: absolute;left: 300px;}
-        .hc-select-wrapper .hc-select-current {box-sizing: border-box;  padding-left: 2px; height: 100%; padding: 3px 18px; font-weight: 700}
-        .hc-select-wrapper .hc-select-focus {outline: 2px solid #79C5F1;}
-        .hc-select-wrapper .hc-select-hover {background-color: #79C5F1;}
-        .hc-select-disabled, .hc-select-disabled * {color: #cccccc}
-        .hc-select-wrapper .hc-select-option {min-height: 20px}
-        .hc-select-wrapper .hc-select-closed {display: none;}
-
-        .hc-select-wrapper .hc-select-list {
-            width: 100%; 
-            background-color: white; 
-            border: 1px solid #79C5F1;
-            list-style: none;
-            margin: 0;
-            padding: 6px 10px;
-            position: absolute;
-            box-sizing: border-box;
-        }
-        .hc-select-wrapper .hc-select-label {margin: 0;}
-        select:invalid + label {color: red;}
-
-        .hc-select-wrapper .hc-select-up {transform: translateY(-100%);}
-
-
-    </style>
+    <link rel="stylesheet" href="hcselect.css">
 </head>
 <body>
+    <div style="height: 300px; background: green"></div>
     <p>Usual select</p>
-    <select name="test" id=test data-id="1" style="vertical-align: top" required>
-        <option value=""></option>
-        <option value="1">1</option>
-        <option value="2">2</option>
-        <option value="3">3</option>
-        <option value="4">4</option>
-        <option value="5">5</option>
-    </select>
-    <label for="test">Label</label>
-    <br><br><br><br><br><br>
+    <form action="#">
+        <select name="test" id=test required>
+            <option value=""></option>
+            <option value="1">1</option>
+            <option value="2">2</option>
+            <option value="3">3</option>
+            <option value="4">4</option>
+            <option value="5">5</option>
+        </select>
+        <label for="test">Label</label>
+        <input type="text" name="log">
+        <input type="submit">
+    </form>
+    <!-- <br><br><br><br><br><br>
     <p>With optgroup</p>
     <select name="test2" id=test2 data-id="2" style="vertical-align: top">
         <optgroup label="A" id='group' disabled>
@@ -69,7 +47,7 @@
     <br><br>
     <button onclick="testA()">Add Opt</button>
     <button onclick="testB()">Add OptGroup</button>
-    <button onclick="testC()">Clear Select</button>
+    <button onclick="testC()">Clear Select</button> -->
     <script>
         
         var selectPlugin = require('selectplugin');
