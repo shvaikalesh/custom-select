@@ -28,6 +28,20 @@ if (!Element.prototype.scrollIntoViewIfNeeded) {
   };
 }
 
+// Polyfill for startsWith
+if (!String.prototype.startsWith)
+{
+    String.prototype.startsWith = function(searchString, position)
+    {
+        position = position || 0
+        return this.indexOf(searchString, position) == position
+    }
+}
+
+
+
+
+
 if (typeof setImmediate == 'undefined')
     setImmediate = setTimeout
 
@@ -358,8 +372,8 @@ if (typeof setImmediate == 'undefined')
             }
         }
 
-        on($list, 'DOMMouseScroll', normalizeScroll)
-        on($list, 'wheel', normalizeScroll)
+        on($list, 'DOMMouseScroll wheel', normalizeScroll)
+        // on($list, 'wheel', normalizeScroll)
 
         // Focus on click.
         on($current, 'click', function(event)
@@ -670,10 +684,14 @@ if (typeof setImmediate == 'undefined')
         observer.observe($select, config)
     }
 
-    function on($emitter, type, handler)
+    function on($emitter, types, handler)
     {
-        return $emitter.addEventListener(type, handler)
-            || $emitter
+        var events = types.split(' ')
+        events.forEach(function(event)
+        {
+            $emitter.addEventListener(event, handler)
+        })
+        return $emitter
     }
 
     function adopt(from, to, map)
